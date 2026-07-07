@@ -14,7 +14,8 @@
     "data:validate": "tsx scripts/validate.ts",
     "data:build": "npm run data:parse && npm run data:link && npm run data:validate",
     "predev": "npm run data:build",
-    "prebuild": "npm run data:build"
+    "prebuild": "npm run data:build",
+    "deploy": "npm run build && npx firebase-tools deploy --only hosting"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
