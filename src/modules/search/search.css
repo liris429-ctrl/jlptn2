@@ -132,3 +132,71 @@
   -webkit-line-clamp: 1;
   overflow: hidden;
 }
+
+/* 暗記模式 card: not navigable, so cancel the "this looks like a link" hover/press
+   affordance that .result-card carries by default. */
+.result-card--memorize {
+  cursor: default;
+}
+
+.result-card--memorize:hover {
+  transform: none;
+  box-shadow: var(--shadow-1);
+  border-color: var(--line);
+}
+
+.result-card--memorize:active {
+  transform: none;
+  box-shadow: var(--shadow-1);
+}
+
+.occlude-row {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.occlude-block {
+  height: 1.1em;
+  min-width: 4ch;
+  border: none;
+  border-radius: 4px;
+  background: var(--line-strong);
+  cursor: pointer;
+  padding: 0;
+}
+
+.occlude-block:hover {
+  background: var(--ink-faint);
+}
+
+.occlude-feedback {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.occlude-btn {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--paper-raised);
+  padding: 0.125rem var(--space-2);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.occlude-btn--remember:hover {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.occlude-btn--forget:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.occlude-status {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}

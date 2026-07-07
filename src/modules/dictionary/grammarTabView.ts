@@ -2,8 +2,9 @@ import type { GrammarEntry } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import { el } from "../../utils/dom.ts";
 import { isFavorite, subscribeFavorites } from "../favorites/favoritesStore.ts";
+import { isWeak, subscribeWeak } from "../memorize/weakWordsStore.ts";
 import { search } from "../search/searchIndex.ts";
-import { renderGrammarCard } from "./entryCard.ts";
+import { renderGrammarCard, renderGrammarMemorizeCard } from "./entryCard.ts";
 import { groupByLesson } from "./lessonGrouping.ts";
 
 export function renderGrammarTabView(container: HTMLElement): void {
@@ -18,10 +19,16 @@ export function renderGrammarTabView(container: HTMLElement): void {
   const favoritesToggle = el("button", { className: "chip filter-toggle", type: "button" }, [
     "只看收藏",
   ]);
+  const weakToggle = el("button", { className: "chip filter-toggle", type: "button" }, [
+    "只看弱點",
+  ]);
+  const memorizeToggle = el("button", { className: "chip filter-toggle", type: "button" }, [
+    "暗記模式",
+  ]);
   const resultsEl = el("div", { className: "search-results" });
   container.append(
     el("div", { className: "search-page" }, [
-      el("div", { className: "search-controls" }, [input, favoritesToggle]),
+      el("div", { className: "search-controls" }, [input, favoritesToggle, weakToggle, memorizeToggle]),
       resultsEl,
     ]),
   );
@@ -33,13 +40,43 @@ export function renderGrammarTabView(container: HTMLElement): void {
     renderResults();
   });
 
-  const unsubscribe = subscribeFavorites(() => {
+  let weakOnly = false;
+  weakToggle.addEventListener("click", () => {
+    weakOnly = !weakOnly;
+    weakToggle.classList.toggle("filter-toggle--active", weakOnly);
+    renderResults();
+  });
+
+  let memorizeMode = false;
+  memorizeToggle.addEventListener("click", () => {
+    memorizeMode = !memorizeMode;
+    memorizeToggle.classList.toggle("filter-toggle--active", memorizeMode);
+    renderResults();
+  });
+
+  const unsubscribeFavorites = subscribeFavorites(() => {
     if (favoritesOnly) renderResults();
   });
-  window.addEventListener("hashchange", unsubscribe, { once: true });
+  const unsubscribeWeak = subscribeWeak(() => {
+    if (weakOnly) renderResults();
+  });
+  window.addEventListener(
+    "hashchange",
+    () => {
+      unsubscribeFavorites();
+      unsubscribeWeak();
+    },
+    { once: true },
+  );
 
-  function applyFavoritesFilter(entries: GrammarEntry[]): GrammarEntry[] {
-    return favoritesOnly ? entries.filter((e) => isFavorite("grammar", e.id)) : entries;
+  function applyFilters(entries: GrammarEntry[]): GrammarEntry[] {
+    let filtered = favoritesOnly ? entries.filter((e) => isFavorite("grammar", e.id)) : entries;
+    filtered = weakOnly ? filtered.filter((e) => isWeak("grammar", e.id)) : filtered;
+    return filtered;
+  }
+
+  function renderEntry(entry: GrammarEntry): HTMLElement {
+    return memorizeMode ? renderGrammarMemorizeCard(entry) : renderGrammarCard(entry);
   }
 
   function renderResults(): void {
@@ -47,29 +84,33 @@ export function renderGrammarTabView(container: HTMLElement): void {
     const query = input.value.trim();
 
     if (!query) {
-      const filtered = applyFavoritesFilter(getStoreSync().grammar);
+      const filtered = applyFilters(getStoreSync().grammar);
       if (filtered.length === 0) {
         resultsEl.append(
-          el("p", { className: "search-empty" }, ["還沒有收藏，點列表旁的星星開始收藏吧"]),
+          el("p", { className: "search-empty" }, [
+            weakOnly
+              ? "還沒有標記弱點，開啟暗記模式測驗幾個字後再回來看看"
+              : "還沒有收藏，點列表旁的星星開始收藏吧",
+          ]),
         );
         return;
       }
       for (const group of groupByLesson(filtered)) {
         resultsEl.append(el("h2", { className: "lesson-heading" }, [group.lessonLabel]));
-        for (const entry of group.entries) resultsEl.append(renderGrammarCard(entry));
+        for (const entry of group.entries) resultsEl.append(renderEntry(entry));
       }
       return;
     }
 
     const matches = search(query, { kind: "grammar" }).map((r) => r.entry as GrammarEntry);
-    const filtered = applyFavoritesFilter(matches);
+    const filtered = applyFilters(matches);
     if (filtered.length === 0) {
       resultsEl.append(
         el("p", { className: "search-empty" }, [`找不到「${query}」，試試看用假名或中文查詢？`]),
       );
       return;
     }
-    for (const entry of filtered) resultsEl.append(renderGrammarCard(entry));
+    for (const entry of filtered) resultsEl.append(renderEntry(entry));
   }
 
   let debounceHandle: ReturnType<typeof setTimeout> | undefined;

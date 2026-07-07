@@ -3,6 +3,7 @@ import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
 import type { FavoriteKind } from "../favorites/favoritesStore.ts";
 import { isFavorite, toggleFavorite } from "../favorites/favoritesStore.ts";
+import { clearWeak, markWeak } from "../memorize/weakWordsStore.ts";
 import { toRubyHtml } from "../../utils/furigana.ts";
 import { POS_LABEL_SHORT } from "./posLabels.ts";
 
@@ -83,4 +84,91 @@ export function renderVocabCard(entry: VocabEntry): HTMLElement {
       renderFavoriteToggle("vocab", entry.id),
     ],
   );
+}
+
+export function renderGrammarMemorizeCard(entry: GrammarEntry): HTMLElement {
+  return renderMemorizeCard({
+    kind: "grammar",
+    id: entry.id,
+    kindLabel: "文法",
+    primary: el("span", { className: "result-primary" }, [entry.pattern]),
+    meaning: entry.meaning,
+  });
+}
+
+export function renderVocabMemorizeCard(entry: VocabEntry): HTMLElement {
+  const primary = el("span", { className: "result-primary" });
+  primary.innerHTML = toRubyHtml(entry.kanji, entry.yomi);
+  const primaryRow = el("span", { className: "result-primary-row" }, [
+    primary,
+    el("span", { className: "result-pos" }, [POS_LABEL_SHORT[entry.partOfSpeech]]),
+  ]);
+  return renderMemorizeCard({
+    kind: "vocab",
+    id: entry.id,
+    kindLabel: "單字",
+    primary: primaryRow,
+    meaning: entry.meaning,
+  });
+}
+
+/**
+ * 赤シート-style self-test card: the meaning starts hidden behind a gray block
+ * (tap to reveal), then offers 記得/忘了 feedback that feeds weakWordsStore. Not
+ * built on makeCardShell - the whole-card "tap navigates to detail" gesture would
+ * collide with "tap the block to reveal the answer", so this card isn't navigable
+ * at all while 暗記模式 is on.
+ */
+function renderMemorizeCard(opts: {
+  kind: FavoriteKind;
+  id: string;
+  kindLabel: string;
+  primary: HTMLElement;
+  meaning: string;
+}): HTMLElement {
+  const { kind, id, kindLabel, primary, meaning } = opts;
+
+  const occludeBtn = el("button", {
+    className: "occlude-block",
+    type: "button",
+    "aria-label": "點一下顯示答案",
+  });
+  occludeBtn.style.width = `${Math.min(Math.max(meaning.length, 4), 12)}ch`;
+
+  const answerRow = el("div", { className: "occlude-row" }, [occludeBtn]);
+
+  occludeBtn.addEventListener("click", () => {
+    const rememberBtn = el(
+      "button",
+      { className: "occlude-btn occlude-btn--remember", type: "button" },
+      ["✓ 記得"],
+    );
+    const forgetBtn = el(
+      "button",
+      { className: "occlude-btn occlude-btn--forget", type: "button" },
+      ["✗ 忘了"],
+    );
+    const feedbackRow = el("div", { className: "occlude-feedback" }, [rememberBtn, forgetBtn]);
+
+    rememberBtn.addEventListener("click", () => {
+      clearWeak(kind, id);
+      feedbackRow.innerHTML = "";
+      feedbackRow.append(el("span", { className: "occlude-status" }, ["已標記：記得"]));
+    });
+    forgetBtn.addEventListener("click", () => {
+      markWeak(kind, id);
+      feedbackRow.innerHTML = "";
+      feedbackRow.append(el("span", { className: "occlude-status" }, ["已標記：忘了"]));
+    });
+
+    answerRow.innerHTML = "";
+    answerRow.append(el("span", { className: "result-meaning" }, [meaning]), feedbackRow);
+  });
+
+  return el("div", { className: "result-card result-card--memorize" }, [
+    el("span", { className: "result-kind" }, [kindLabel]),
+    primary,
+    answerRow,
+    renderFavoriteToggle(kind, id),
+  ]);
 }
