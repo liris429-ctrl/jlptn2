@@ -157,6 +157,22 @@ export interface GrammarEntry {
   tags?: string[];
 }
 
+export type QuizCategory = "grammar" | "vocab";
+
+export interface QuizQuestion {
+  id: string;
+  category: QuizCategory;
+  jlptLevel: JlptLevel;
+  /** Which past exam this question is drawn from, e.g. "2010年7月考題". */
+  source: string;
+  /** Question stem; the blank is marked in the source text (e.g. （   ）). */
+  question: string;
+  options: string[];
+  /** 0-based index into `options`. */
+  answer: number;
+  explanation?: string;
+}
+
 export interface DataStore {
   grammar: GrammarEntry[];
   vocab: VocabEntry[];

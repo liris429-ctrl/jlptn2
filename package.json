@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "data:fetch": "tsx scripts/fetch-external-data.ts",
-    "data:parse": "tsx scripts/parse-grammar-anki.ts && tsx scripts/parse-vocab-eggrolls.ts",
+    "data:parse": "tsx scripts/parse-grammar-anki.ts && tsx scripts/parse-vocab-eggrolls.ts && tsx scripts/parse-quiz.ts",
     "data:i18n": "tsx scripts/convert-to-traditional.ts",
     "data:link": "tsx scripts/link-vocab.ts",
     "data:validate": "tsx scripts/validate.ts",

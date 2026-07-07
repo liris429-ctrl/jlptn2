@@ -1,9 +1,10 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { GrammarEntry, VocabEntry } from "../src/data/schema.ts";
+import type { GrammarEntry, QuizQuestion, VocabEntry } from "../src/data/schema.ts";
 
 const VOCAB_PATH = path.resolve(import.meta.dirname, "../public/data/vocab.json");
 const GRAMMAR_PATH = path.resolve(import.meta.dirname, "../public/data/grammar.json");
+const QUIZ_PATH = path.resolve(import.meta.dirname, "../public/data/quiz.json");
 
 const VALID_POS = new Set([
   "noun",
@@ -103,13 +104,36 @@ function validateGrammar(grammar: GrammarEntry[], vocabIds: Set<string>, report:
   }
 }
 
+function validateQuiz(quiz: QuizQuestion[], report: Report): void {
+  const idCounts = new Map<string, number>();
+  for (const q of quiz) {
+    idCounts.set(q.id, (idCounts.get(q.id) ?? 0) + 1);
+    if (!q.question) report.errors.push(`quiz ${q.id}: missing question`);
+    if (!VALID_JLPT_LEVEL.has(q.jlptLevel)) {
+      report.errors.push(`quiz ${q.id}: invalid jlptLevel "${q.jlptLevel}"`);
+    }
+    if (q.options.length < 2) {
+      report.errors.push(`quiz ${q.id}: needs at least 2 options, got ${q.options.length}`);
+    }
+    if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= q.options.length) {
+      report.errors.push(`quiz ${q.id}: answer index ${q.answer} out of range for ${q.options.length} options`);
+    }
+    if (!q.explanation) report.warnings.push(`quiz ${q.id}: missing explanation`);
+  }
+  for (const [id, count] of idCounts) {
+    if (count > 1) report.errors.push(`quiz: duplicate id "${id}" (${count} occurrences)`);
+  }
+}
+
 async function main(): Promise<void> {
   const vocab: VocabEntry[] = JSON.parse(await readFile(VOCAB_PATH, "utf-8"));
   const grammar: GrammarEntry[] = JSON.parse(await readFile(GRAMMAR_PATH, "utf-8"));
+  const quiz: QuizQuestion[] = JSON.parse(await readFile(QUIZ_PATH, "utf-8"));
 
   const report: Report = { errors: [], warnings: [] };
   validateVocab(vocab, report);
   validateGrammar(grammar, new Set(vocab.map((v) => v.id)), report);
+  validateQuiz(quiz, report);
 
   if (report.warnings.length > 0) {
     console.warn(`${report.warnings.length} warning(s):`);
@@ -123,7 +147,7 @@ async function main(): Promise<void> {
     return;
   }
   console.log(
-    `validate: OK (${vocab.length} vocab, ${grammar.length} grammar, ${report.warnings.length} warnings)`,
+    `validate: OK (${vocab.length} vocab, ${grammar.length} grammar, ${quiz.length} quiz, ${report.warnings.length} warnings)`,
   );
 }
 
