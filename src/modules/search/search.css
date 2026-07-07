@@ -106,15 +106,13 @@
   font-weight: 700;
 }
 
-.result-yomi {
-  grid-column: 2;
-  color: var(--ink-faint);
-  font-size: 0.8125rem;
-}
-
 .result-meaning {
   grid-column: 2;
   color: var(--ink-soft);
   font-size: 0.875rem;
   text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
 }

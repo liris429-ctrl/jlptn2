@@ -3,6 +3,7 @@ import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
 import type { FavoriteKind } from "../favorites/favoritesStore.ts";
 import { isFavorite, toggleFavorite } from "../favorites/favoritesStore.ts";
+import { toRubyHtml } from "../../utils/furigana.ts";
 
 export function renderFavoriteToggle(kind: FavoriteKind, id: string): HTMLElement {
   const btn = el("button", {
@@ -59,13 +60,14 @@ export function renderGrammarCard(entry: GrammarEntry): HTMLElement {
 }
 
 export function renderVocabCard(entry: VocabEntry): HTMLElement {
+  const primary = el("span", { className: "result-primary" });
+  primary.innerHTML = toRubyHtml(entry.kanji, entry.yomi);
   return makeCardShell(
     "result-card result-card--vocab",
     () => navigate(`/vocab/${entry.id}`),
     [
       el("span", { className: "result-kind" }, ["單字"]),
-      el("span", { className: "result-primary" }, [entry.kanji]),
-      el("span", { className: "result-yomi" }, [entry.yomi]),
+      primary,
       el("span", { className: "result-meaning" }, [entry.meaning]),
       renderFavoriteToggle("vocab", entry.id),
     ],

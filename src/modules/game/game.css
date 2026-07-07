@@ -7,6 +7,12 @@
 
 .game-status {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.game-status-row {
+  display: flex;
   align-items: center;
   gap: var(--space-4);
   font-variant-numeric: tabular-nums;
@@ -16,13 +22,43 @@
   font-family: var(--font-jp-serif);
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--accent-ink);
+  color: var(--ink);
 }
 
 .game-score,
 .game-combo {
   font-size: 0.875rem;
   color: var(--ink-soft);
+}
+
+/* Escalating warm-orange as combo climbs - reuses --accent, no new hues. */
+.game-combo--tier1 {
+  color: color-mix(in srgb, var(--accent) 35%, var(--ink-faint));
+  font-weight: 600;
+}
+
+.game-combo--tier2 {
+  color: color-mix(in srgb, var(--accent) 65%, var(--ink-faint));
+  font-weight: 700;
+}
+
+.game-combo--tier3 {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.game-progress-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.game-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 1s linear;
 }
 
 .game-restart {
@@ -65,21 +101,15 @@
   overflow: hidden;
 }
 
+/*
+  Deliberately only touches box-shadow: :hover:not(:disabled) has higher
+  specificity than the single-class state rules below (jp's moss stripe,
+  selected/wrong-flash/matched), so if this also set border-color or
+  transform it would silently override them whenever the pointer lingers
+  over a selected cell after a click - the common case on desktop.
+*/
 .game-cell:hover:not(:disabled) {
-  border-color: var(--line-strong);
   box-shadow: var(--shadow-2);
-  transform: translateY(-1px);
-}
-
-.game-cell-tag {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  font-size: 0.5625rem;
-  font-weight: 600;
-  line-height: 1;
-  border-radius: 4px;
-  padding: 0.125rem 0.25rem;
 }
 
 .game-cell-text {
@@ -103,6 +133,8 @@
 
 .game-cell--jp {
   background: color-mix(in srgb, var(--ink) 3%, var(--paper-raised));
+  border-left-width: 3px;
+  border-left-color: var(--moss);
 }
 
 .game-cell--jp .game-cell-text {
@@ -110,22 +142,13 @@
   font-weight: 700;
 }
 
-.game-cell--jp .game-cell-tag {
-  background: var(--moss-soft);
-  color: var(--moss);
-}
-
 .game-cell--zh .game-cell-text {
   font-family: var(--font-jp-sans);
   color: var(--ink-soft);
 }
 
-.game-cell--zh .game-cell-tag {
-  background: color-mix(in srgb, var(--ink) 8%, var(--paper-raised));
-  color: var(--ink-soft);
-}
-
 .game-cell--selected {
+  border-width: 2px;
   border-color: var(--accent);
   box-shadow: var(--shadow-2);
   transform: translateY(-2px);
@@ -138,9 +161,11 @@
 }
 
 .game-cell--matched {
+  border-color: var(--success);
   opacity: 0;
   pointer-events: none;
   transform: scale(0.85);
+  transition-duration: 150ms;
 }
 
 @keyframes shake {

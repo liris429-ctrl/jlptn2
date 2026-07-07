@@ -1,5 +1,5 @@
 import { el } from "../../utils/dom.ts";
-import { GameEngine, type Cell, type GameState } from "./gameEngine.ts";
+import { GameEngine, ROUND_SECONDS, type Cell, type GameState } from "./gameEngine.ts";
 
 export function renderGameView(container: HTMLElement): void {
   container.innerHTML = "";
@@ -30,16 +30,32 @@ export function renderGameView(container: HTMLElement): void {
   window.addEventListener("hashchange", cleanup, { once: true });
 }
 
+/** Escalating warm-orange emphasis as combo climbs, reusing --accent (no new hues). */
+function comboTierClass(combo: number): string {
+  if (combo >= 6) return " game-combo--tier3";
+  if (combo >= 4) return " game-combo--tier2";
+  if (combo >= 2) return " game-combo--tier1";
+  return "";
+}
+
 function renderStatusBar(container: HTMLElement, state: GameState, onRestart: () => void): void {
   container.innerHTML = "";
   const restartBtn = el("button", { className: "game-restart", type: "button" }, ["重新開始"]);
   restartBtn.addEventListener("click", onRestart);
-  container.append(
+
+  const statsRow = el("div", { className: "game-status-row" }, [
     el("span", { className: "game-timer" }, [`${state.timeRemaining}s`]),
     el("span", { className: "game-score" }, [`消除 ${state.sessionTotalMatches}`]),
-    el("span", { className: "game-combo" }, [`Combo ${state.combo}`]),
+    el("span", { className: `game-combo${comboTierClass(state.combo)}` }, [`Combo ×${state.combo}`]),
     restartBtn,
-  );
+  ]);
+
+  const progressPct = Math.max(0, Math.min(100, (state.timeRemaining / ROUND_SECONDS) * 100));
+  const progressFill = el("div", { className: "game-progress-fill" });
+  progressFill.style.width = `${progressPct}%`;
+  const progressTrack = el("div", { className: "game-progress-track" }, [progressFill]);
+
+  container.append(statsRow, progressTrack);
 }
 
 function renderGrid(container: HTMLElement, state: GameState, onSelect: (cellId: string) => void): void {
@@ -56,7 +72,6 @@ function lengthTier(text: string): "sm" | "md" | "lg" {
 }
 
 function renderCell(cell: Cell, onSelect: (cellId: string) => void): HTMLElement {
-  const tag = el("span", { className: "game-cell-tag" }, [cell.kind === "jp" ? "日" : "中"]);
   const text = el("span", { className: "game-cell-text" }, [cell.display]);
   const button = el(
     "button",
@@ -64,7 +79,7 @@ function renderCell(cell: Cell, onSelect: (cellId: string) => void): HTMLElement
       className: `game-cell game-cell--${cell.kind} game-cell--${cell.state} game-cell--len-${lengthTier(cell.display)}`,
       type: "button",
     },
-    [tag, text],
+    [text],
   );
   if (cell.state === "matched") button.setAttribute("disabled", "true");
   button.addEventListener("click", () => onSelect(cell.cellId));

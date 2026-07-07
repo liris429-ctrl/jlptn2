@@ -44,8 +44,8 @@
 }
 
 .nav-tab--active {
-  color: var(--accent-ink);
-  border-top-color: var(--accent);
+  color: var(--ink);
+  border-top-color: var(--ink);
 }
 
 .loading-notice {
