@@ -12,7 +12,17 @@ import "./modules/game/game.css";
 import "./modules/search/search.css";
 import { navigate, registerRoute, startRouter } from "./router.ts";
 import { el } from "./utils/dom.ts";
+import { NAV_ICONS } from "./utils/navIcons.ts";
 import { registerServiceWorker } from "./pwa/registerSW.ts";
+
+function makeNavTab(icon: string, label: string): HTMLButtonElement {
+  const iconWrap = el("span", { className: "nav-icon-wrap", "aria-hidden": "true" });
+  iconWrap.innerHTML = icon;
+  return el("button", { className: "nav-tab", type: "button" }, [
+    iconWrap,
+    el("span", { className: "nav-label" }, [label]),
+  ]);
+}
 
 async function main(): Promise<void> {
   const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -20,9 +30,9 @@ async function main(): Promise<void> {
 
   const view = el("main", { className: "app-view" });
   const nav = el("nav", { className: "app-nav" });
-  const grammarTab = el("button", { className: "nav-tab", type: "button" }, ["文法"]);
-  const vocabTab = el("button", { className: "nav-tab", type: "button" }, ["單字"]);
-  const gameTab = el("button", { className: "nav-tab", type: "button" }, ["連連看"]);
+  const grammarTab = makeNavTab(NAV_ICONS.grammar, "文法");
+  const vocabTab = makeNavTab(NAV_ICONS.vocab, "單字");
+  const gameTab = makeNavTab(NAV_ICONS.game, "連連看");
   grammarTab.addEventListener("click", () => navigate("/grammar"));
   vocabTab.addEventListener("click", () => navigate("/vocab"));
   gameTab.addEventListener("click", () => navigate("/game"));
