@@ -65,6 +65,12 @@
   overflow: hidden;
 }
 
+.game-cell:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+
 .game-cell--jp {
   font-family: var(--font-jp-serif);
   font-weight: 700;

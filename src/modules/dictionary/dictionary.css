@@ -12,16 +12,17 @@
 .pos-badge,
 .pitch-badge {
   font-size: 0.75rem;
-  border-radius: var(--radius-pill);
-  padding: 0.125rem 0.625rem;
-  border: 1px solid var(--line-strong);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 6px;
+  padding: 0.1875rem 0.5rem;
   color: var(--ink-soft);
+  background: color-mix(in srgb, var(--ink) 6%, var(--paper-raised));
 }
 
 .pos-badge {
   background: var(--moss-soft);
   color: var(--moss);
-  border-color: transparent;
 }
 
 .vocab-meaning,
@@ -91,8 +92,16 @@
 }
 
 .example-card {
-  border-top: 1px solid var(--line);
-  padding: var(--space-4) 0;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.example-card:first-child {
+  margin-top: 0;
 }
 
 .example-jp {
@@ -139,8 +148,14 @@
 }
 
 .note-item {
-  border-top: 1px solid var(--line);
-  padding: var(--space-3) 0;
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
+  border-radius: var(--radius-input);
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.note-item:first-child {
+  margin-top: 0;
 }
 
 .note-zh {
