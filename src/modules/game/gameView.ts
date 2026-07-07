@@ -49,14 +49,22 @@ function renderGrid(container: HTMLElement, state: GameState, onSelect: (cellId:
   }
 }
 
+function lengthTier(text: string): "sm" | "md" | "lg" {
+  if (text.length > 8) return "lg";
+  if (text.length > 4) return "md";
+  return "sm";
+}
+
 function renderCell(cell: Cell, onSelect: (cellId: string) => void): HTMLElement {
+  const tag = el("span", { className: "game-cell-tag" }, [cell.kind === "jp" ? "日" : "中"]);
+  const text = el("span", { className: "game-cell-text" }, [cell.display]);
   const button = el(
     "button",
     {
-      className: `game-cell game-cell--${cell.kind} game-cell--${cell.state}`,
+      className: `game-cell game-cell--${cell.kind} game-cell--${cell.state} game-cell--len-${lengthTier(cell.display)}`,
       type: "button",
     },
-    [cell.display],
+    [tag, text],
   );
   if (cell.state === "matched") button.setAttribute("disabled", "true");
   button.addEventListener("click", () => onSelect(cell.cellId));

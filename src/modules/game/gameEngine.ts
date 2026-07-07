@@ -1,5 +1,6 @@
 import type { VocabEntry } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
+import { firstClause } from "../../utils/text.ts";
 import { sample, shuffle } from "./shuffle.ts";
 
 export type CellState = "idle" | "selected" | "matched" | "wrong-flash";
@@ -32,10 +33,6 @@ export const PAIRS_PER_ROUND = 8;
 const WRONG_FLASH_MS = 500;
 
 type Listener = (state: GameState) => void;
-
-function firstClause(meaning: string): string {
-  return meaning.split(/[、;；]/)[0] ?? meaning;
-}
 
 export class GameEngine {
   private state: GameState = GameEngine.initialState();
@@ -84,8 +81,11 @@ export class GameEngine {
 
   private drawGrid(): Cell[] {
     const store = getStoreSync();
-    const unseen = store.vocab.filter((v) => !this.usedVocabIds.has(v.id));
-    const pool = unseen.length >= PAIRS_PER_ROUND ? unseen : store.vocab;
+    // Exclude words flagged as visually near-identical to their own Chinese
+    // meaning (e.g. 電子/电子) - matching them is a freebie with no training value.
+    const eligible = store.vocab.filter((v) => !v.gameExcluded);
+    const unseen = eligible.filter((v) => !this.usedVocabIds.has(v.id));
+    const pool = unseen.length >= PAIRS_PER_ROUND ? unseen : eligible;
     const picked = sample(pool, PAIRS_PER_ROUND);
     for (const v of picked) this.usedVocabIds.add(v.id);
 

@@ -48,18 +48,18 @@
 }
 
 .game-cell {
-  aspect-ratio: 1;
+  position: relative;
+  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-1);
   border-radius: var(--radius-input);
   border: 1px solid var(--line-strong);
   background: var(--paper-raised);
   box-shadow: var(--shadow-1);
-  font-size: 0.9375rem;
-  line-height: 1.3;
+  line-height: 1.25;
   transition: transform 0.12s ease, opacity 0.2s ease, border-color 0.12s ease,
     background-color 0.12s ease;
   overflow: hidden;
@@ -71,13 +71,57 @@
   transform: translateY(-1px);
 }
 
+.game-cell-tag {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 4px;
+  padding: 0.125rem 0.25rem;
+}
+
+.game-cell-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.game-cell--len-sm .game-cell-text {
+  font-size: 0.9375rem;
+}
+
+.game-cell--len-md .game-cell-text {
+  font-size: 0.8125rem;
+}
+
+.game-cell--len-lg .game-cell-text {
+  font-size: 0.6875rem;
+}
+
 .game-cell--jp {
+  background: color-mix(in srgb, var(--ink) 3%, var(--paper-raised));
+}
+
+.game-cell--jp .game-cell-text {
   font-family: var(--font-jp-serif);
   font-weight: 700;
 }
 
-.game-cell--zh {
+.game-cell--jp .game-cell-tag {
+  background: var(--moss-soft);
+  color: var(--moss);
+}
+
+.game-cell--zh .game-cell-text {
   font-family: var(--font-jp-sans);
+  color: var(--ink-soft);
+}
+
+.game-cell--zh .game-cell-tag {
+  background: color-mix(in srgb, var(--ink) 8%, var(--paper-raised));
   color: var(--ink-soft);
 }
 

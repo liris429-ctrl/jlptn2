@@ -10,9 +10,10 @@
     "test": "vitest run",
     "data:fetch": "tsx scripts/fetch-external-data.ts",
     "data:parse": "tsx scripts/parse-grammar-anki.ts && tsx scripts/parse-vocab-excel.ts",
+    "data:i18n": "tsx scripts/convert-to-traditional.ts",
     "data:link": "tsx scripts/link-vocab.ts",
     "data:validate": "tsx scripts/validate.ts",
-    "data:build": "npm run data:parse && npm run data:link && npm run data:validate",
+    "data:build": "npm run data:parse && npm run data:i18n && npm run data:link && npm run data:validate",
     "predev": "npm run data:build",
     "prebuild": "npm run data:build",
     "deploy": "npm run build && npx firebase-tools deploy --only hosting"
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@types/node": "^26.1.0",
     "@types/papaparse": "^5.5.2",
+    "opencc-js": "^1.4.0",
     "papaparse": "^5.5.4",
     "tsx": "^4.23.0",
     "typescript": "~6.0.2",

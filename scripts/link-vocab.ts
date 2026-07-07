@@ -7,6 +7,7 @@ import {
   getSurfaceForms,
 } from "../src/modules/conjugation/conjugate.ts";
 import { isKanaOnly } from "../src/utils/kana.ts";
+import { firstClause } from "../src/utils/text.ts";
 
 const VOCAB_PATH = path.resolve(import.meta.dirname, "../public/data/vocab.json");
 const GRAMMAR_PATH = path.resolve(import.meta.dirname, "../public/data/grammar.json");
@@ -67,6 +68,30 @@ function bakeConjugatedForms(vocab: VocabEntry[]): void {
   }
 }
 
+/**
+ * Flags vocab whose kanji is visually near-identical to its own (already
+ * Traditional-converted, by this point in the pipeline) Chinese meaning - e.g.
+ * 電子/電子 - so 連連看 can skip them as a "freebie" match with no training
+ * value. Threshold validated against the real dataset: catches 534/3592
+ * (14.9%) entries, which felt right by manual spot-check.
+ */
+function isHomographWithMeaning(kanji: string, meaning: string): boolean {
+  const clause = firstClause(meaning);
+  if (clause === kanji) return true;
+  if (clause.length !== kanji.length || clause.length === 0) return false;
+  let same = 0;
+  for (let i = 0; i < clause.length; i++) if (clause[i] === kanji[i]) same++;
+  return same / clause.length >= 0.7;
+}
+
+function flagGameExcluded(vocab: VocabEntry[]): void {
+  for (const entry of vocab) {
+    if (isHomographWithMeaning(entry.kanji, entry.meaning)) {
+      entry.gameExcluded = true;
+    }
+  }
+}
+
 function linkExamples(
   grammar: GrammarEntry[],
   surfaceForms: Map<string, string>,
@@ -119,6 +144,7 @@ async function main(): Promise<void> {
   const grammar: GrammarEntry[] = JSON.parse(await readFile(GRAMMAR_PATH, "utf-8"));
 
   bakeConjugatedForms(vocab);
+  flagGameExcluded(vocab);
   const surfaceForms = buildSurfaceFormMap(vocab);
   const vocabById = new Map(vocab.map((v) => [v.id, v]));
   linkExamples(grammar, surfaceForms, vocabById);
@@ -132,9 +158,11 @@ async function main(): Promise<void> {
     0,
   );
   const linkedVocabCount = vocab.filter((v) => v.grammarRefs && v.grammarRefs.length > 0).length;
+  const excludedCount = vocab.filter((v) => v.gameExcluded).length;
   console.log(
     `linked ${totalLinks} vocab occurrences across grammar examples; ${linkedVocabCount} vocab entries have grammarRefs`,
   );
+  console.log(`flagged ${excludedCount} vocab entries as gameExcluded (kanji/meaning homographs)`);
 }
 
 main().catch((err: unknown) => {

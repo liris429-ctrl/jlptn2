@@ -71,6 +71,13 @@ export interface VocabEntry {
   tags?: string[];
   /** Computed by scripts/link-vocab.ts: grammar entries whose examples use this word. */
   grammarRefs?: string[];
+  /**
+   * Computed by scripts/link-vocab.ts: true when kanji is visually near-identical
+   * to its own (Traditional-converted) Chinese meaning (e.g. 電子/電子, i.e. no
+   * actual translation happening). Excluded from 連連看 - matching it would be a
+   * freebie with no training value.
+   */
+  gameExcluded?: boolean;
 }
 
 export interface VocabLink {

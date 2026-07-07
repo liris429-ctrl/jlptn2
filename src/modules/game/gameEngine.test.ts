@@ -8,6 +8,9 @@ const vocab: VocabEntry[] = Array.from({ length: 12 }, (_, i) => ({
   yomi: `じ${i}`,
   meaning: `意思${i}`,
   partOfSpeech: "noun",
+  // First three are flagged as homograph "freebies" - excluded from the game.
+  // 9 eligible entries remain, still comfortably above PAIRS_PER_ROUND (8).
+  gameExcluded: i < 3 ? true : undefined,
 }));
 
 vi.mock("../../data/store.ts", () => ({
@@ -91,6 +94,19 @@ describe("GameEngine", () => {
     expect(latest!.sessionTotalMatches).toBe(PAIRS_PER_ROUND);
     expect(latest!.matchesThisRound).toBe(0);
     expect(latest!.grid.filter((c) => c.state === "matched")).toHaveLength(0);
+    engine.stop();
+  });
+
+  it("never draws vocab flagged as gameExcluded", () => {
+    const engine = new GameEngine();
+    engine.start();
+    let latest: GameState;
+    engine.subscribe((s) => (latest = s));
+
+    const excludedIds = new Set(["v-0", "v-1", "v-2"]);
+    for (const cell of latest!.grid) {
+      expect(excludedIds.has(cell.vocabId)).toBe(false);
+    }
     engine.stop();
   });
 
