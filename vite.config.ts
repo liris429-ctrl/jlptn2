@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "icons/*.svg"],
+      includeAssets: ["favicon-32.png", "favicon-64.png", "icons/apple-touch-icon.png"],
       manifest: {
         name: "N2たん - JLPT N2 文法・語彙学習",
         short_name: "N2たん",
@@ -14,17 +14,23 @@ export default defineConfig({
         orientation: "portrait",
         start_url: "/",
         scope: "/",
-        theme_color: "#1c2b2a",
-        background_color: "#f6f2ea",
+        theme_color: "#0a182c",
+        background_color: "#f1f2ec",
         icons: [
-          { src: "icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
-          { src: "icons/icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          {
+            src: "icons/icon-maskable-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
         ],
       },
       workbox: {
         // Precache the generated grammar/vocab JSON too, so the app works fully
         // offline right after the first visit (not just after a second fetch).
-        globPatterns: ["**/*.{js,css,html,svg,json,woff2}"],
+        globPatterns: ["**/*.{js,css,html,png,svg,json,woff2}"],
       },
     }),
   ],
