@@ -1,0 +1,113 @@
+.search-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.search-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-input);
+  background: var(--paper-raised);
+  font-size: 1rem;
+  box-shadow: var(--shadow-1);
+}
+
+.filter-toggle {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.filter-toggle--active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.lesson-heading {
+  margin-top: var(--space-6);
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+}
+
+.lesson-heading:first-child {
+  margin-top: 0;
+}
+
+.search-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.search-hint,
+.search-empty {
+  color: var(--ink-faint);
+  text-align: center;
+  padding: var(--space-8) 0;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.result-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+  align-items: baseline;
+  text-align: left;
+  cursor: pointer;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  padding: var(--space-3) var(--space-1);
+  transition: background-color 0.12s ease;
+}
+
+.result-card:hover {
+  background: var(--paper-raised);
+}
+
+.result-card:active {
+  transform: scale(0.995);
+}
+
+.result-kind {
+  grid-row: 1 / 3;
+  font-size: 0.6875rem;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  padding: 0.125rem 0.5rem;
+  align-self: start;
+}
+
+.result-primary {
+  font-family: var(--font-jp-serif);
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.result-yomi {
+  grid-column: 2;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+.result-meaning {
+  grid-column: 2;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}

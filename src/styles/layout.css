@@ -1,0 +1,138 @@
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app-header {
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+.app-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.app-nav {
+  display: flex;
+  border-top: 1px solid var(--line);
+  background: var(--paper-raised);
+  position: sticky;
+  bottom: 0;
+}
+
+.nav-tab {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: var(--space-3) var(--space-2);
+  font-size: 0.9375rem;
+  color: var(--ink-faint);
+  border-top: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-tab--active {
+  color: var(--accent-ink);
+  border-top-color: var(--accent);
+}
+
+.loading-notice {
+  color: var(--ink-faint);
+  padding: var(--space-8) 0;
+  text-align: center;
+}
+
+.back-button {
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  padding: 0;
+  margin-bottom: var(--space-4);
+  font-size: 0.9375rem;
+}
+
+.back-button:hover {
+  color: var(--accent-ink);
+}
+
+.detail-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.chip {
+  border: 1px solid var(--line-strong);
+  background: var(--paper-raised);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.chip:active {
+  transform: scale(0.97);
+}
+
+.chip--grammar {
+  font-family: var(--font-jp-serif);
+}
+
+section > h2 {
+  margin-top: var(--space-6);
+}
+
+.heading-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.heading-row h1 {
+  margin-bottom: 0;
+}
+
+.favorite-toggle {
+  grid-row: 1 / 3;
+  grid-column: 3;
+  border: none;
+  background: none;
+  font-size: 1.375rem;
+  line-height: 1;
+  color: var(--line-strong);
+  padding: var(--space-1);
+  align-self: center;
+}
+
+.favorite-toggle--active {
+  color: var(--accent);
+}
+
+.favorite-toggle:hover {
+  color: var(--accent);
+}

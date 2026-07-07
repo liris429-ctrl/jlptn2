@@ -1,0 +1,30 @@
+{
+  "name": "n2-study-pwa",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "data:fetch": "tsx scripts/fetch-external-data.ts",
+    "data:parse": "tsx scripts/parse-grammar-anki.ts && tsx scripts/parse-vocab-excel.ts",
+    "data:link": "tsx scripts/link-vocab.ts",
+    "data:validate": "tsx scripts/validate.ts",
+    "data:build": "npm run data:parse && npm run data:link && npm run data:validate",
+    "predev": "npm run data:build",
+    "prebuild": "npm run data:build"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@types/papaparse": "^5.5.2",
+    "papaparse": "^5.5.4",
+    "tsx": "^4.23.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.10",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  }
+}

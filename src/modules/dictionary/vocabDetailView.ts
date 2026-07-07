@@ -1,0 +1,128 @@
+import type { ConjugatedForms, VocabEntry } from "../../data/schema.ts";
+import { getStoreSync } from "../../data/store.ts";
+import { navigate } from "../../router.ts";
+import { el } from "../../utils/dom.ts";
+import { toRubyHtml } from "../../utils/furigana.ts";
+import { renderFavoriteToggle } from "./entryCard.ts";
+
+const POS_LABEL: Record<VocabEntry["partOfSpeech"], string> = {
+  noun: "名詞",
+  verb: "動詞",
+  "i-adjective": "い形容詞",
+  "na-adjective": "な形容詞",
+  adverb: "副詞",
+  pronoun: "代名詞",
+  conjunction: "接続詞",
+  idiom: "慣用句",
+  properNoun: "固有名詞",
+  interjection: "感嘆詞",
+  other: "その他",
+};
+
+const VERB_FORM_LABELS: [keyof ConjugatedForms, string][] = [
+  ["masu", "ます形"],
+  ["masuNegative", "ません形"],
+  ["te", "て形"],
+  ["ta", "た形"],
+  ["nai", "ない形"],
+  ["naiPast", "なかった形"],
+  ["potential", "可能形"],
+  ["volitional", "意向形"],
+  ["passive", "受身形"],
+  ["causative", "使役形"],
+  ["imperative", "命令形"],
+  ["conditionalBa", "条件形（ば）"],
+];
+
+const ADJECTIVE_FORM_LABELS: [keyof ConjugatedForms, string][] = [
+  ["nai", "否定形（くない）"],
+  ["ta", "過去形（かった）"],
+  ["naiPast", "過去否定形（くなかった）"],
+  ["te", "て形（くて）"],
+  ["conditionalBa", "条件形（ければ）"],
+];
+
+export function renderVocabDetailView(container: HTMLElement, params: Record<string, string>): void {
+  container.innerHTML = "";
+  const store = getStoreSync();
+  const entry = store.vocabById.get(params.id!);
+
+  if (!entry) {
+    container.append(renderNotFound());
+    return;
+  }
+
+  const backBtn = el("button", { className: "back-button", type: "button" }, ["← 返回單字"]);
+  backBtn.addEventListener("click", () => navigate("/vocab"));
+
+  const headingText = el("h1", { className: "vocab-heading" });
+  headingText.innerHTML = toRubyHtml(entry.kanji, entry.yomi);
+  const headingRow = el("div", { className: "heading-row" }, [
+    headingText,
+    renderFavoriteToggle("vocab", entry.id),
+  ]);
+
+  const meta = el("div", { className: "vocab-meta" }, [
+    el("span", { className: "pos-badge" }, [POS_LABEL[entry.partOfSpeech]]),
+    ...(entry.pitchAccent ? [el("span", { className: "pitch-badge" }, [`アクセント: ${entry.pitchAccent.raw}`])] : []),
+  ]);
+
+  const meaning = el("p", { className: "vocab-meaning" }, [entry.meaning]);
+
+  const sections: HTMLElement[] = [backBtn, headingRow, meta, meaning];
+
+  if (entry.partOfSpeech === "verb" && entry.verb?.conjugatedForms) {
+    sections.push(renderFormsTable("動詞変化", VERB_FORM_LABELS, entry.verb.conjugatedForms));
+  } else if (entry.partOfSpeech === "i-adjective" && entry.adjectiveForms) {
+    sections.push(renderFormsTable("形容詞変化", ADJECTIVE_FORM_LABELS, entry.adjectiveForms));
+  }
+
+  if (entry.grammarRefs && entry.grammarRefs.length > 0) {
+    sections.push(renderGrammarRefs(entry.grammarRefs, store));
+  }
+
+  container.append(el("div", { className: "detail-page vocab-detail" }, sections));
+}
+
+function renderFormsTable(
+  title: string,
+  labels: [keyof ConjugatedForms, string][],
+  forms: Partial<ConjugatedForms>,
+): HTMLElement {
+  const rows = labels
+    .filter(([key]) => forms[key])
+    .map(([key, label]) =>
+      el("div", { className: "form-row" }, [
+        el("span", { className: "form-label" }, [label]),
+        el("span", { className: "form-value" }, [forms[key]!]),
+      ]),
+    );
+  return el("section", { className: "forms-section" }, [
+    el("h2", {}, [title]),
+    el("div", { className: "forms-table" }, rows),
+  ]);
+}
+
+function renderGrammarRefs(
+  grammarIds: string[],
+  store: ReturnType<typeof getStoreSync>,
+): HTMLElement {
+  const chips = grammarIds
+    .map((id) => store.grammarById.get(id))
+    .filter((g): g is NonNullable<typeof g> => Boolean(g))
+    .map((g) => {
+      const chip = el("button", { className: "chip chip--grammar", type: "button" }, [g.pattern]);
+      chip.addEventListener("click", () => navigate(`/grammar/${g.id}`));
+      return chip;
+    });
+  return el("section", { className: "grammar-refs-section" }, [
+    el("h2", {}, ["出現於以下文法"]),
+    el("div", { className: "chip-row" }, chips),
+  ]);
+}
+
+function renderNotFound(): HTMLElement {
+  const back = el("button", { className: "back-button", type: "button" }, ["← 返回單字"]);
+  back.addEventListener("click", () => navigate("/vocab"));
+  return el("div", { className: "detail-page" }, [back, el("p", {}, ["找不到這個單字"])]);
+}
