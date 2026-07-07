@@ -23,9 +23,13 @@ export function parseCsv<T extends Record<string, unknown> = Record<string, stri
   return result.data;
 }
 
-/** Parses a headerless CSV (rows only, no header row) into a 2D array of cells. */
-export function parseCsvRows(raw: string): string[][] {
-  const result = Papa.parse<string[]>(cleanText(raw), { header: false });
+/**
+ * Parses a headerless CSV (rows only, no header row) into a 2D array of cells.
+ * Pass `delimiter` explicitly for large files instead of relying on Papaparse's
+ * sniffing, which gets less reliable the bigger the sample it has to guess from.
+ */
+export function parseCsvRows(raw: string, delimiter?: string): string[][] {
+  const result = Papa.parse<string[]>(cleanText(raw), { header: false, delimiter });
   return result.data.filter((row) => row.length > 1 || (row[0] ?? "").trim() !== "");
 }
 

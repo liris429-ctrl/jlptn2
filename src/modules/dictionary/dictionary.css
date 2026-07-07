@@ -11,6 +11,7 @@
   margin-bottom: var(--space-4);
 }
 
+.jlpt-badge,
 .pos-badge,
 .pitch-badge {
   font-size: 0.75rem;
@@ -71,8 +72,30 @@
 .conjunction-section,
 .grammar-refs-section,
 .additional-notes-section,
-.examples-section {
+.examples-section,
+.related-words-section {
   margin-top: var(--space-6);
+}
+
+.related-word-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.related-word-row:first-of-type {
+  margin-top: 0;
+}
+
+.related-word-label {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-faint);
+}
+
+.related-word-row .chip-row {
+  margin: 0;
 }
 
 .conjunction-box {

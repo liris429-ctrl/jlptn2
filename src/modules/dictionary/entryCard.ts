@@ -67,19 +67,23 @@ export function renderGrammarCard(entry: GrammarEntry): HTMLElement {
   );
 }
 
-export function renderVocabCard(entry: VocabEntry): HTMLElement {
+function buildVocabPrimaryRow(entry: VocabEntry): HTMLElement {
   const primary = el("span", { className: "result-primary" });
   primary.innerHTML = toRubyHtml(entry.kanji, entry.yomi);
-  const primaryRow = el("span", { className: "result-primary-row" }, [
+  return el("span", { className: "result-primary-row" }, [
     primary,
+    el("span", { className: "result-level" }, [entry.jlptLevel]),
     el("span", { className: "result-pos" }, [POS_LABEL_SHORT[entry.partOfSpeech]]),
   ]);
+}
+
+export function renderVocabCard(entry: VocabEntry): HTMLElement {
   return makeCardShell(
     "result-card result-card--vocab",
     () => navigate(`/vocab/${entry.id}`),
     [
       el("span", { className: "result-kind" }, ["單字"]),
-      primaryRow,
+      buildVocabPrimaryRow(entry),
       el("span", { className: "result-meaning" }, [entry.meaning]),
       renderFavoriteToggle("vocab", entry.id),
     ],
@@ -97,17 +101,11 @@ export function renderGrammarMemorizeCard(entry: GrammarEntry): HTMLElement {
 }
 
 export function renderVocabMemorizeCard(entry: VocabEntry): HTMLElement {
-  const primary = el("span", { className: "result-primary" });
-  primary.innerHTML = toRubyHtml(entry.kanji, entry.yomi);
-  const primaryRow = el("span", { className: "result-primary-row" }, [
-    primary,
-    el("span", { className: "result-pos" }, [POS_LABEL_SHORT[entry.partOfSpeech]]),
-  ]);
   return renderMemorizeCard({
     kind: "vocab",
     id: entry.id,
     kindLabel: "單字",
-    primary: primaryRow,
+    primary: buildVocabPrimaryRow(entry),
     meaning: entry.meaning,
   });
 }

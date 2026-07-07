@@ -18,6 +18,7 @@ const vocab: VocabEntry[] = [
     yomi: "せつぞく",
     meaning: "连接、接续",
     partOfSpeech: "noun",
+    jlptLevel: "N2",
   },
 ];
 

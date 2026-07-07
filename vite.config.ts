@@ -27,6 +27,9 @@ export default defineConfig({
         // Precache the generated grammar/vocab JSON too, so the app works fully
         // offline right after the first visit (not just after a second fetch).
         globPatterns: ["**/*.{js,css,html,png,svg,json,woff2}"],
+        // vocab.json grew past workbox's 2 MiB default once the eggrolls N1-N5
+        // deck (10,622 entries + examples) replaced the old N2-only source (v9).
+        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
       },
     }),
   ],

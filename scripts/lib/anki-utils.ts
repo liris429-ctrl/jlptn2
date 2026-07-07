@@ -49,6 +49,16 @@ export function furiganaBracketToRuby(text: string): string {
   return withRuby.replace(/ /g, "");
 }
 
+/**
+ * Strips bracket furigana notation down to just the kanji/base text - some sources
+ * (e.g. eggrolls-JLPT10k, for ateji/irregular-reading headwords like 台詞[せりふ])
+ * bake the reading straight into the headword field instead of a separate column.
+ * Same matching rule as furiganaBracketToRuby, just discarding the reading.
+ */
+export function furiganaBracketToPlainText(text: string): string {
+  return text.replace(/(\S+?)\[([^\]\s]+)\]/g, (_m, chunk: string) => chunk).replace(/ /g, "");
+}
+
 export function slugifyId(input: string): string {
   return (
     input

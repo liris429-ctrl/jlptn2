@@ -1,4 +1,4 @@
-import type { ConjugatedForms } from "../../data/schema.ts";
+import type { ConjugatedForms, VocabExample, VocabRelatedWord } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
@@ -50,6 +50,7 @@ export function renderVocabDetailView(container: HTMLElement, params: Record<str
   ]);
 
   const meta = el("div", { className: "vocab-meta" }, [
+    el("span", { className: "jlpt-badge" }, [entry.jlptLevel]),
     el("span", { className: "pos-badge" }, [POS_LABEL[entry.partOfSpeech]]),
     ...(entry.pitchAccent ? [el("span", { className: "pitch-badge" }, [`アクセント: ${entry.pitchAccent.raw}`])] : []),
   ]);
@@ -64,11 +65,52 @@ export function renderVocabDetailView(container: HTMLElement, params: Record<str
     sections.push(renderFormsTable("形容詞変化", ADJECTIVE_FORM_LABELS, entry.adjectiveForms));
   }
 
+  if (entry.examples && entry.examples.length > 0) {
+    sections.push(renderVocabExamples(entry.examples));
+  }
+
+  if (entry.relatedWords && entry.relatedWords.length > 0) {
+    sections.push(renderRelatedWords(entry.relatedWords));
+  }
+
   if (entry.grammarRefs && entry.grammarRefs.length > 0) {
     sections.push(renderGrammarRefs(entry.grammarRefs, store));
   }
 
   container.append(el("div", { className: "detail-page vocab-detail" }, sections));
+}
+
+function renderVocabExamples(examples: VocabExample[]): HTMLElement {
+  const cards = examples.map((example) => {
+    const sentence = el("p", { className: "example-jp" });
+    sentence.innerHTML = example.furiganaRuby || example.jp;
+    return el("div", { className: "example-card" }, [
+      sentence,
+      el("p", { className: "example-cn" }, [example.cn]),
+    ]);
+  });
+  return el("section", { className: "examples-section" }, [el("h2", {}, ["例句"]), ...cards]);
+}
+
+function renderRelatedWords(relatedWords: VocabRelatedWord[]): HTMLElement {
+  const groups: [label: string, words: VocabRelatedWord[]][] = [
+    ["同義詞", relatedWords.filter((w) => w.relation === "related")],
+    ["反義詞", relatedWords.filter((w) => w.relation === "antonym")],
+  ];
+  const rows = groups
+    .filter(([, words]) => words.length > 0)
+    .map(([label, words]) => {
+      const chips = words.map((w) => {
+        const chip = el("span", { className: "chip chip--grammar" });
+        chip.innerHTML = w.furiganaRuby || w.kanji;
+        return chip;
+      });
+      return el("div", { className: "related-word-row" }, [
+        el("span", { className: "related-word-label" }, [`${label}：`]),
+        el("div", { className: "chip-row" }, chips),
+      ]);
+    });
+  return el("section", { className: "related-words-section" }, [el("h2", {}, ["相關詞"]), ...rows]);
 }
 
 function renderFormsTable(

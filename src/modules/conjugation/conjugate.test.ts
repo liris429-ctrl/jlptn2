@@ -161,6 +161,7 @@ describe("getSurfaceForms", () => {
       yomi: "かえる",
       meaning: "回去",
       partOfSpeech: "verb",
+      jlptLevel: "N2",
       verb: { group: "godan-ru" },
     };
     const forms = getSurfaceForms(entry);
@@ -176,6 +177,7 @@ describe("getSurfaceForms", () => {
       yomi: "せつぞく",
       meaning: "连接",
       partOfSpeech: "noun",
+      jlptLevel: "N2",
     };
     expect(getSurfaceForms(entry)).toEqual(["接続"]);
   });

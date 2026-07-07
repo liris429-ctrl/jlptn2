@@ -9,9 +9,8 @@ const SOURCES = [
     out: "grammar-notes.csv",
   },
   {
-    url: "https://raw.githubusercontent.com/RabbearSu/Japanese-Words/master/data/jp_zhongji.xlsx",
-    out: "vocab.xlsx",
-    binary: true,
+    url: "https://raw.githubusercontent.com/5mdld/anki-jlpt-decks/main/deck-source/notes.csv",
+    out: "vocab-eggrolls.csv",
   },
 ];
 

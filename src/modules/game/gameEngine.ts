@@ -117,7 +117,9 @@ export class GameEngine {
     const store = getStoreSync();
     // Exclude words flagged as visually near-identical to their own Chinese
     // meaning (e.g. 電子/电子) - matching them is a freebie with no training value.
-    const eligible = store.vocab.filter((v) => !v.gameExcluded);
+    // The vocab library now spans N1-N5 (see v9); 連連看 stays N2-only by default
+    // to match the app's existing focus - no in-game level picker yet.
+    const eligible = store.vocab.filter((v) => !v.gameExcluded && v.jlptLevel === "N2");
     const unseen = eligible.filter((v) => !this.usedVocabIds.has(v.id));
     const pool = unseen.length >= PAIRS_PER_ROUND ? unseen : eligible;
     const picked = pickUniqueByMeaning(pool, PAIRS_PER_ROUND);

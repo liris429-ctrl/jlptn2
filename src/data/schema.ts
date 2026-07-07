@@ -57,6 +57,25 @@ export interface PitchAccent {
   primary?: number;
 }
 
+export type JlptLevel = "N1" | "N2" | "N3" | "N4" | "N5";
+
+export interface VocabExample {
+  id: string;
+  /** Plain sentence text, HTML stripped. */
+  jp: string;
+  /** Ruby-annotated HTML built from the source's bracket furigana notation; the
+   * headword stays wrapped in <b> from the source, giving a free in-context highlight. */
+  furiganaRuby: string;
+  cn: string;
+}
+
+export interface VocabRelatedWord {
+  relation: "related" | "antonym";
+  kanji: string;
+  furiganaRuby: string;
+  meaning: string;
+}
+
 export interface VocabEntry {
   id: string;
   kanji: string;
@@ -67,7 +86,11 @@ export interface VocabEntry {
   verb?: VerbConjugationInfo;
   /** Baked at build time for partOfSpeech === "i-adjective" entries; see conjugateIAdjective. */
   adjectiveForms?: Partial<ConjugatedForms>;
-  sourceLesson?: string;
+  jlptLevel: JlptLevel;
+  /** Only present for N1-N3, derived from JLPT past-exam appearance frequency. */
+  frequencyTier?: "high" | "mid" | "low";
+  examples?: VocabExample[];
+  relatedWords?: VocabRelatedWord[];
   tags?: string[];
   /** Computed by scripts/link-vocab.ts: grammar entries whose examples use this word. */
   grammarRefs?: string[];

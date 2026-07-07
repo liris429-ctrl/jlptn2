@@ -19,6 +19,8 @@ const VALID_POS = new Set([
   "other",
 ]);
 
+const VALID_JLPT_LEVEL = new Set(["N1", "N2", "N3", "N4", "N5"]);
+
 const VALID_VERB_GROUP = new Set([
   "godan-u",
   "godan-ku",
@@ -49,6 +51,9 @@ function validateVocab(vocab: VocabEntry[], report: Report): void {
     if (!entry.meaning) report.warnings.push(`vocab ${entry.id}: missing meaning`);
     if (!VALID_POS.has(entry.partOfSpeech)) {
       report.errors.push(`vocab ${entry.id}: invalid partOfSpeech "${entry.partOfSpeech}"`);
+    }
+    if (!VALID_JLPT_LEVEL.has(entry.jlptLevel)) {
+      report.errors.push(`vocab ${entry.id}: invalid jlptLevel "${entry.jlptLevel}"`);
     }
     if (entry.partOfSpeech === "verb") {
       if (!entry.verb) report.errors.push(`vocab ${entry.id}: verb missing verb.group`);
