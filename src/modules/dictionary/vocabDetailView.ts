@@ -1,23 +1,10 @@
-import type { ConjugatedForms, VocabEntry } from "../../data/schema.ts";
+import type { ConjugatedForms } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
 import { toRubyHtml } from "../../utils/furigana.ts";
 import { renderFavoriteToggle } from "./entryCard.ts";
-
-const POS_LABEL: Record<VocabEntry["partOfSpeech"], string> = {
-  noun: "名詞",
-  verb: "動詞",
-  "i-adjective": "い形容詞",
-  "na-adjective": "な形容詞",
-  adverb: "副詞",
-  pronoun: "代名詞",
-  conjunction: "接続詞",
-  idiom: "慣用句",
-  properNoun: "固有名詞",
-  interjection: "感嘆詞",
-  other: "その他",
-};
+import { POS_LABEL } from "./posLabels.ts";
 
 const VERB_FORM_LABELS: [keyof ConjugatedForms, string][] = [
   ["masu", "ます形"],
@@ -59,7 +46,7 @@ export function renderVocabDetailView(container: HTMLElement, params: Record<str
   headingText.innerHTML = toRubyHtml(entry.kanji, entry.yomi);
   const headingRow = el("div", { className: "heading-row" }, [
     headingText,
-    renderFavoriteToggle("vocab", entry.id),
+    renderFavoriteToggle("vocab", entry.id, { large: true }),
   ]);
 
   const meta = el("div", { className: "vocab-meta" }, [

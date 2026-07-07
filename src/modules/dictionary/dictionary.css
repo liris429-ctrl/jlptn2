@@ -1,6 +1,8 @@
 .vocab-heading,
 .grammar-heading {
   font-size: 2rem;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .vocab-meta {
@@ -62,6 +64,8 @@
 .form-value {
   font-family: var(--font-jp-serif);
   font-size: 1.0625rem;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .conjunction-section,
@@ -107,8 +111,11 @@
 .example-jp {
   font-family: var(--font-jp-serif);
   font-size: 1.25rem;
-  line-height: 2.1;
+  line-height: 1.9;
   margin-bottom: var(--space-2);
+  word-break: keep-all;
+  line-break: strict;
+  overflow-wrap: anywhere;
 }
 
 .example-cn {

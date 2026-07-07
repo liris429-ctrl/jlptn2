@@ -4,10 +4,15 @@ import { el } from "../../utils/dom.ts";
 import type { FavoriteKind } from "../favorites/favoritesStore.ts";
 import { isFavorite, toggleFavorite } from "../favorites/favoritesStore.ts";
 import { toRubyHtml } from "../../utils/furigana.ts";
+import { POS_LABEL_SHORT } from "./posLabels.ts";
 
-export function renderFavoriteToggle(kind: FavoriteKind, id: string): HTMLElement {
+export function renderFavoriteToggle(
+  kind: FavoriteKind,
+  id: string,
+  { large = false }: { large?: boolean } = {},
+): HTMLElement {
   const btn = el("button", {
-    className: "favorite-toggle",
+    className: large ? "favorite-toggle favorite-toggle--lg" : "favorite-toggle",
     type: "button",
     "aria-label": "收藏",
   });
@@ -64,12 +69,16 @@ export function renderGrammarCard(entry: GrammarEntry): HTMLElement {
 export function renderVocabCard(entry: VocabEntry): HTMLElement {
   const primary = el("span", { className: "result-primary" });
   primary.innerHTML = toRubyHtml(entry.kanji, entry.yomi);
+  const primaryRow = el("span", { className: "result-primary-row" }, [
+    primary,
+    el("span", { className: "result-pos" }, [POS_LABEL_SHORT[entry.partOfSpeech]]),
+  ]);
   return makeCardShell(
     "result-card result-card--vocab",
     () => navigate(`/vocab/${entry.id}`),
     [
       el("span", { className: "result-kind" }, ["單字"]),
-      primary,
+      primaryRow,
       el("span", { className: "result-meaning" }, [entry.meaning]),
       renderFavoriteToggle("vocab", entry.id),
     ],

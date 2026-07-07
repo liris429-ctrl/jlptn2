@@ -152,6 +152,8 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .game-cell--len-sm .game-cell-text {

@@ -25,7 +25,7 @@ export function renderGrammarDetailView(
 
   const headingRow = el("div", { className: "heading-row" }, [
     el("h1", { className: "grammar-heading" }, [entry.pattern]),
-    renderFavoriteToggle("grammar", entry.id),
+    renderFavoriteToggle("grammar", entry.id, { large: true }),
   ]);
   const meaning = el("p", { className: "grammar-meaning" }, [entry.meaning]);
 

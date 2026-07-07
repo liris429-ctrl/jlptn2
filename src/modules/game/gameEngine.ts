@@ -1,7 +1,7 @@
 import type { VocabEntry } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import { firstClause } from "../../utils/text.ts";
-import { sample, shuffle } from "./shuffle.ts";
+import { shuffle } from "./shuffle.ts";
 
 export type CellState = "idle" | "selected" | "matched" | "wrong-flash";
 export type CellKind = "jp" | "zh";
@@ -33,6 +33,37 @@ export interface GameState {
 export const ROUND_SECONDS = 30;
 export const PAIRS_PER_ROUND = 8;
 const WRONG_FLASH_MS = 500;
+
+/**
+ * Different words can collapse to the same displayed Chinese clause (e.g. 支払い
+ * (noun) and 支払う (verb) both show "支付,付款", or true synonyms like あっち/そっち).
+ * If both landed in the same round, their zh cells would read identically with no
+ * way to tell which jp cell they pair with - a real fairness bug, not cosmetic.
+ * Picking greedily while skipping meaning-clause repeats guarantees every zh cell
+ * in a round is textually distinct.
+ */
+function pickUniqueByMeaning(pool: readonly VocabEntry[], count: number): VocabEntry[] {
+  const shuffled = shuffle(pool);
+  const picked: VocabEntry[] = [];
+  const seenMeanings = new Set<string>();
+  for (const v of shuffled) {
+    if (picked.length >= count) break;
+    const clause = firstClause(v.meaning);
+    if (seenMeanings.has(clause)) continue;
+    seenMeanings.add(clause);
+    picked.push(v);
+  }
+  // Defensive fallback for a pool too small to fill `count` unique-meaning slots
+  // (won't happen in practice - thousands of eligible words) so a round never
+  // silently comes up short.
+  if (picked.length < count) {
+    for (const v of shuffled) {
+      if (picked.length >= count) break;
+      if (!picked.includes(v)) picked.push(v);
+    }
+  }
+  return picked;
+}
 
 type Listener = (state: GameState) => void;
 
@@ -89,7 +120,7 @@ export class GameEngine {
     const eligible = store.vocab.filter((v) => !v.gameExcluded);
     const unseen = eligible.filter((v) => !this.usedVocabIds.has(v.id));
     const pool = unseen.length >= PAIRS_PER_ROUND ? unseen : eligible;
-    const picked = sample(pool, PAIRS_PER_ROUND);
+    const picked = pickUniqueByMeaning(pool, PAIRS_PER_ROUND);
     for (const v of picked) this.usedVocabIds.add(v.id);
 
     const cells: Cell[] = [];

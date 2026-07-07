@@ -55,12 +55,16 @@
 }
 
 .back-button {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 44px;
   border: none;
   background: none;
   color: var(--ink-faint);
-  padding: 0;
-  margin-bottom: var(--space-4);
-  font-size: 0.9375rem;
+  padding: var(--space-2) 0;
+  margin: calc(var(--space-2) * -1) 0 var(--space-2);
+  font-size: 1rem;
 }
 
 .back-button:hover {
@@ -139,4 +143,17 @@ section > h2 {
 
 .favorite-toggle:hover {
   color: var(--accent);
+}
+
+.favorite-toggle--lg {
+  font-size: 1.75rem;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* Scoped to :not(.favorite-toggle--active) so it can never outrank the active-state
+   accent color on specificity ties (they'd tie at one class each otherwise, and
+   source order would decide - see the v4 hover/selected-state bug for why that's fragile). */
+.favorite-toggle--lg:not(.favorite-toggle--active) {
+  color: var(--ink-faint);
 }

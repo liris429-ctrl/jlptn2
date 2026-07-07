@@ -2,16 +2,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { VocabEntry } from "../../data/schema.ts";
 import type { GameState } from "./gameEngine.ts";
 
-const vocab: VocabEntry[] = Array.from({ length: 12 }, (_, i) => ({
-  id: `v-${i}`,
-  kanji: `字${i}`,
-  yomi: `じ${i}`,
-  meaning: `意思${i}`,
-  partOfSpeech: "noun",
-  // First three are flagged as homograph "freebies" - excluded from the game.
-  // 9 eligible entries remain, still comfortably above PAIRS_PER_ROUND (8).
-  gameExcluded: i < 3 ? true : undefined,
-}));
+const vocab: VocabEntry[] = [
+  ...Array.from({ length: 12 }, (_, i) => ({
+    id: `v-${i}`,
+    kanji: `字${i}`,
+    yomi: `じ${i}`,
+    meaning: `意思${i}`,
+    partOfSpeech: "noun" as const,
+    // First three are flagged as homograph "freebies" - excluded from the game.
+    // 9 eligible entries remain, still comfortably above PAIRS_PER_ROUND (8).
+    gameExcluded: i < 3 ? true : undefined,
+  })),
+  // Two distinct words (different POS) that collapse to the identical displayed
+  // Chinese clause - the real-world case (支払い/支払う both "支付,付款") that
+  // motivates pickUniqueByMeaning().
+  { id: "v-dup-a", kanji: "撞名甲", yomi: "どうめいこう", meaning: "重複意思", partOfSpeech: "noun" as const },
+  { id: "v-dup-b", kanji: "撞名乙", yomi: "どうめいおつ", meaning: "重複意思", partOfSpeech: "verb" as const },
+];
 
 vi.mock("../../data/store.ts", () => ({
   getStoreSync: () => ({ vocab, grammar: [], grammarById: new Map(), vocabById: new Map() }),
@@ -129,6 +136,18 @@ describe("GameEngine", () => {
       expect(excludedIds.has(cell.vocabId)).toBe(false);
     }
     engine.stop();
+  });
+
+  it("never draws two vocab entries whose first-clause meaning collides within the same round", () => {
+    const engine = new GameEngine();
+    for (let i = 0; i < 30; i++) {
+      engine.start();
+      let latest: GameState;
+      engine.subscribe((s) => (latest = s));
+      const zhDisplays = latest!.grid.filter((c) => c.kind === "zh").map((c) => c.display);
+      expect(new Set(zhDisplays).size).toBe(zhDisplays.length);
+      engine.stop();
+    }
   });
 
   it("timer reaching zero ends the round", () => {
