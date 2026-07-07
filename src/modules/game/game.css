@@ -1,3 +1,67 @@
+.hub-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.hub-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-4);
+  transition: box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
+}
+
+.hub-row:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+
+.hub-row:active {
+  transform: translateY(0) scale(0.99);
+  box-shadow: var(--shadow-1);
+}
+
+.hub-row-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--moss);
+}
+
+.hub-row-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.hub-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.hub-row-title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.hub-row-subtitle {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+  margin: var(--space-1) 0 0;
+}
+
+.hub-row-chevron {
+  flex-shrink: 0;
+  color: var(--ink-faint);
+  font-size: 1.25rem;
+}
+
 .game-page {
   display: flex;
   flex-direction: column;

@@ -1,4 +1,4 @@
-import type { DataStore, GrammarEntry, VocabEntry } from "./schema.ts";
+import type { DataStore, GrammarEntry, QuizQuestion, VocabEntry } from "./schema.ts";
 
 interface Store extends DataStore {
   grammarById: Map<string, GrammarEntry>;
@@ -14,16 +14,18 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Loads grammar.json + vocab.json once and caches the result for the whole app session. */
+/** Loads grammar.json + vocab.json + quiz.json once and caches the result for the whole app session. */
 export function loadStore(): Promise<Store> {
   if (!storePromise) {
     storePromise = Promise.all([
       fetchJson<GrammarEntry[]>("/data/grammar.json"),
       fetchJson<VocabEntry[]>("/data/vocab.json"),
-    ]).then(([grammar, vocab]) => {
+      fetchJson<QuizQuestion[]>("/data/quiz.json"),
+    ]).then(([grammar, vocab, quiz]) => {
       cached = {
         grammar,
         vocab,
+        quiz,
         grammarById: new Map(grammar.map((g) => [g.id, g])),
         vocabById: new Map(vocab.map((v) => [v.id, v])),
       };

@@ -23,7 +23,7 @@ const vocab: VocabEntry[] = [
 ];
 
 vi.mock("../../data/store.ts", () => ({
-  getStoreSync: () => ({ grammar, vocab, grammarById: new Map(), vocabById: new Map() }),
+  getStoreSync: () => ({ grammar, vocab, quiz: [], grammarById: new Map(), vocabById: new Map() }),
 }));
 
 const { search, resetSearchIndex } = await import("./searchIndex.ts");

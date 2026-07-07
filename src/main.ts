@@ -8,7 +8,10 @@ import { renderGrammarTabView } from "./modules/dictionary/grammarTabView.ts";
 import { renderVocabTabView } from "./modules/dictionary/vocabTabView.ts";
 import "./modules/dictionary/dictionary.css";
 import { renderGameView } from "./modules/game/gameView.ts";
+import { renderGameHubView } from "./modules/game/gameHubView.ts";
 import "./modules/game/game.css";
+import { renderQuizView } from "./modules/quiz/quizView.ts";
+import "./modules/quiz/quiz.css";
 import "./modules/search/search.css";
 import { navigate, registerRoute, startRouter } from "./router.ts";
 import { el } from "./utils/dom.ts";
@@ -32,7 +35,7 @@ async function main(): Promise<void> {
   const nav = el("nav", { className: "app-nav" });
   const grammarTab = makeNavTab(NAV_ICONS.grammar, "文法");
   const vocabTab = makeNavTab(NAV_ICONS.vocab, "單字");
-  const gameTab = makeNavTab(NAV_ICONS.game, "連連看");
+  const gameTab = makeNavTab(NAV_ICONS.game, "日文練習");
   grammarTab.addEventListener("click", () => navigate("/grammar"));
   vocabTab.addEventListener("click", () => navigate("/vocab"));
   gameTab.addEventListener("click", () => navigate("/game"));
@@ -52,7 +55,7 @@ async function main(): Promise<void> {
   const setActiveTab = (path: string): void => {
     grammarTab.classList.toggle("nav-tab--active", path === "/grammar");
     vocabTab.classList.toggle("nav-tab--active", path === "/vocab");
-    gameTab.classList.toggle("nav-tab--active", path === "/game");
+    gameTab.classList.toggle("nav-tab--active", path.startsWith("/game"));
   };
 
   registerRoute("/", () => {
@@ -77,7 +80,15 @@ async function main(): Promise<void> {
   });
   registerRoute("/game", () => {
     setActiveTab("/game");
+    renderGameHubView(view);
+  });
+  registerRoute("/game/match", () => {
+    setActiveTab("/game");
     renderGameView(view);
+  });
+  registerRoute("/game/quiz", () => {
+    setActiveTab("/game");
+    renderQuizView(view);
   });
 
   startRouter();

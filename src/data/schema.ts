@@ -176,4 +176,5 @@ export interface QuizQuestion {
 export interface DataStore {
   grammar: GrammarEntry[];
   vocab: VocabEntry[];
+  quiz: QuizQuestion[];
 }

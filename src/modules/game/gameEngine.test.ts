@@ -36,7 +36,7 @@ const vocab: VocabEntry[] = [
 ];
 
 vi.mock("../../data/store.ts", () => ({
-  getStoreSync: () => ({ vocab, grammar: [], grammarById: new Map(), vocabById: new Map() }),
+  getStoreSync: () => ({ vocab, grammar: [], quiz: [], grammarById: new Map(), vocabById: new Map() }),
 }));
 
 const { GameEngine, PAIRS_PER_ROUND, ROUND_SECONDS } = await import("./gameEngine.ts");
