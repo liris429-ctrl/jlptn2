@@ -1,5 +1,9 @@
+import { getStoreSync } from "../../data/store.ts";
+import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
 import { GameEngine, ROUND_SECONDS, type Cell, type GameState } from "./gameEngine.ts";
+
+const WRONG_LIST_MAX = 8;
 
 export function renderGameView(container: HTMLElement): void {
   container.innerHTML = "";
@@ -11,10 +15,12 @@ export function renderGameView(container: HTMLElement): void {
   const page = el("div", { className: "game-page" }, [statusBar, grid, overlay]);
   container.append(page);
 
+  let previousCombo = 0;
   const unsubscribe = engine.subscribe((state) => render(state));
 
   function render(state: GameState): void {
-    renderStatusBar(statusBar, state, () => engine.start());
+    renderStatusBar(statusBar, state, previousCombo, () => engine.start());
+    previousCombo = state.combo;
     renderGrid(grid, state, (cellId) => engine.selectCell(cellId));
     renderOverlay(overlay, state, () => engine.start());
   }
@@ -38,15 +44,27 @@ function comboTierClass(combo: number): string {
   return "";
 }
 
-function renderStatusBar(container: HTMLElement, state: GameState, onRestart: () => void): void {
+/** Milestone every 5th combo (5, 10, 15...) gets a bigger, glowing pop than a normal tick. */
+function comboPopClass(combo: number, previousCombo: number): string {
+  if (combo <= previousCombo || combo <= 0) return "";
+  return combo % 5 === 0 ? " game-combo--milestone" : " game-combo--pop";
+}
+
+function renderStatusBar(
+  container: HTMLElement,
+  state: GameState,
+  previousCombo: number,
+  onRestart: () => void,
+): void {
   container.innerHTML = "";
   const restartBtn = el("button", { className: "game-restart", type: "button" }, ["重新開始"]);
   restartBtn.addEventListener("click", onRestart);
 
+  const comboClass = `game-combo${comboTierClass(state.combo)}${comboPopClass(state.combo, previousCombo)}`;
   const statsRow = el("div", { className: "game-status-row" }, [
     el("span", { className: "game-timer" }, [`${state.timeRemaining}s`]),
     el("span", { className: "game-score" }, [`消除 ${state.sessionTotalMatches}`]),
-    el("span", { className: `game-combo${comboTierClass(state.combo)}` }, [`Combo ×${state.combo}`]),
+    el("span", { className: comboClass }, [`Combo ×${state.combo}`]),
     restartBtn,
   ]);
 
@@ -86,6 +104,31 @@ function renderCell(cell: Cell, onSelect: (cellId: string) => void): HTMLElement
   return button;
 }
 
+function renderWrongWordList(vocabIds: string[]): HTMLElement | null {
+  if (vocabIds.length === 0) return null;
+  const store = getStoreSync();
+  const entries = vocabIds
+    .map((id) => store.vocabById.get(id))
+    .filter((v): v is NonNullable<typeof v> => v !== undefined);
+  if (entries.length === 0) return null;
+
+  const shown = entries.slice(0, WRONG_LIST_MAX);
+  const chips = shown.map((entry) => {
+    const chip = el("button", { className: "chip chip--vocab", type: "button" }, [
+      `${entry.kanji} ${entry.meaning}`,
+    ]);
+    chip.addEventListener("click", () => navigate(`/vocab/${entry.id}`));
+    return chip;
+  });
+
+  const children: (Node | string)[] = [el("div", { className: "chip-row" }, chips)];
+  if (entries.length > WRONG_LIST_MAX) {
+    children.push(el("p", { className: "game-result-more" }, [`還有 ${entries.length - WRONG_LIST_MAX} 個…`]));
+  }
+
+  return el("div", { className: "game-wrong-words" }, [el("h3", {}, ["本輪答錯的詞"]), ...children]);
+}
+
 function renderOverlay(container: HTMLElement, state: GameState, onRestart: () => void): void {
   container.innerHTML = "";
   container.classList.toggle("game-overlay--visible", state.phase === "gameOver");
@@ -100,13 +143,15 @@ function renderOverlay(container: HTMLElement, state: GameState, onRestart: () =
   ]);
   again.addEventListener("click", onRestart);
 
-  container.append(
-    el("div", { className: "game-result" }, [
-      el("h2", {}, ["時間到！"]),
-      el("p", {}, [`總消除數：${state.sessionTotalMatches}`]),
-      el("p", {}, [`最高 Combo：${state.maxCombo}`]),
-      el("p", {}, [`正確率：${accuracy}%`]),
-      again,
-    ]),
-  );
+  const resultChildren: (Node | string)[] = [
+    el("h2", {}, ["時間到！"]),
+    el("p", {}, [`總消除數：${state.sessionTotalMatches}`]),
+    el("p", {}, [`最高 Combo：${state.maxCombo}`]),
+    el("p", {}, [`正確率：${accuracy}%`]),
+  ];
+  const wrongList = renderWrongWordList(state.wrongVocabIds);
+  if (wrongList) resultChildren.push(wrongList);
+  resultChildren.push(again);
+
+  container.append(el("div", { className: "game-result" }, resultChildren));
 }

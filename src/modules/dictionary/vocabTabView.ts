@@ -48,7 +48,9 @@ export function renderVocabTabView(container: HTMLElement): void {
       }
       const favorited = getStoreSync().vocab.filter((v) => isFavorite("vocab", v.id));
       if (favorited.length === 0) {
-        resultsEl.append(el("p", { className: "search-empty" }, ["收藏清單是空的"]));
+        resultsEl.append(
+          el("p", { className: "search-empty" }, ["還沒有收藏，點列表旁的星星開始收藏吧"]),
+        );
         return;
       }
       for (const entry of favorited) resultsEl.append(renderVocabCard(entry));
@@ -58,7 +60,9 @@ export function renderVocabTabView(container: HTMLElement): void {
     const matches = search(query, { kind: "vocab" }).map((r) => r.entry as VocabEntry);
     const filtered = favoritesOnly ? matches.filter((v) => isFavorite("vocab", v.id)) : matches;
     if (filtered.length === 0) {
-      resultsEl.append(el("p", { className: "search-empty" }, [`沒有找到「${query}」的結果`]));
+      resultsEl.append(
+        el("p", { className: "search-empty" }, [`找不到「${query}」，試試看用假名或中文查詢？`]),
+      );
       return;
     }
     for (const entry of filtered) resultsEl.append(renderVocabCard(entry));

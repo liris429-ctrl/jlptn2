@@ -77,6 +77,27 @@ describe("GameEngine", () => {
     engine.stop();
   });
 
+  it("records both vocab ids from a mismatch in wrongVocabIds, deduped across repeats", () => {
+    const engine = new GameEngine();
+    engine.start();
+    let latest: GameState;
+    engine.subscribe((s) => (latest = s));
+
+    const jpCell = latest!.grid.find((c) => c.kind === "jp")!;
+    const zhCell = latest!.grid.find((c) => c.kind === "zh" && c.vocabId !== jpCell.vocabId)!;
+
+    engine.selectCell(jpCell.cellId);
+    engine.selectCell(zhCell.cellId);
+    expect(new Set(latest!.wrongVocabIds)).toEqual(new Set([jpCell.vocabId, zhCell.vocabId]));
+
+    // Repeating the same wrong pair should not duplicate entries.
+    vi.advanceTimersByTime(500);
+    engine.selectCell(jpCell.cellId);
+    engine.selectCell(zhCell.cellId);
+    expect(latest!.wrongVocabIds).toHaveLength(2);
+    engine.stop();
+  });
+
   it("clearing all 8 pairs before time runs out refills the grid and keeps the session total", () => {
     const engine = new GameEngine();
     engine.start();

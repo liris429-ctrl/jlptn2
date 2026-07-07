@@ -12,7 +12,9 @@ export function renderFavoriteToggle(kind: FavoriteKind, id: string): HTMLElemen
     "aria-label": "收藏",
   });
   const sync = (): void => {
-    btn.textContent = isFavorite(kind, id) ? "★" : "☆";
+    // U+FE0E forces the text (monochrome) glyph presentation instead of a
+    // platform's built-in full-color emoji star, which would ignore CSS `color`.
+    btn.textContent = isFavorite(kind, id) ? "★︎" : "☆︎";
     btn.classList.toggle("favorite-toggle--active", isFavorite(kind, id));
   };
   sync();

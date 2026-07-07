@@ -49,7 +49,9 @@ export function renderGrammarTabView(container: HTMLElement): void {
     if (!query) {
       const filtered = applyFavoritesFilter(getStoreSync().grammar);
       if (filtered.length === 0) {
-        resultsEl.append(el("p", { className: "search-empty" }, ["收藏清單是空的"]));
+        resultsEl.append(
+          el("p", { className: "search-empty" }, ["還沒有收藏，點列表旁的星星開始收藏吧"]),
+        );
         return;
       }
       for (const group of groupByLesson(filtered)) {
@@ -62,7 +64,9 @@ export function renderGrammarTabView(container: HTMLElement): void {
     const matches = search(query, { kind: "grammar" }).map((r) => r.entry as GrammarEntry);
     const filtered = applyFavoritesFilter(matches);
     if (filtered.length === 0) {
-      resultsEl.append(el("p", { className: "search-empty" }, [`沒有找到「${query}」的結果`]));
+      resultsEl.append(
+        el("p", { className: "search-empty" }, [`找不到「${query}」，試試看用假名或中文查詢？`]),
+      );
       return;
     }
     for (const entry of filtered) resultsEl.append(renderGrammarCard(entry));

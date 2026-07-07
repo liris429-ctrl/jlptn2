@@ -26,6 +26,8 @@ export interface GameState {
   combo: number;
   maxCombo: number;
   timeRemaining: number;
+  /** Distinct vocab ids that were part of at least one mismatched pair this session. */
+  wrongVocabIds: string[];
 }
 
 export const ROUND_SECONDS = 30;
@@ -52,6 +54,7 @@ export class GameEngine {
       combo: 0,
       maxCombo: 0,
       timeRemaining: ROUND_SECONDS,
+      wrongVocabIds: [],
     };
   }
 
@@ -150,11 +153,15 @@ export class GameEngine {
     } else {
       this.applyCellState(first.cellId, "wrong-flash");
       this.applyCellState(cellId, "wrong-flash");
+      const wrongIds = new Set(this.state.wrongVocabIds);
+      wrongIds.add(first.vocabId);
+      wrongIds.add(cell.vocabId);
       this.state = {
         ...this.state,
         selectedCellId: null,
         combo: 0,
         sessionWrong: this.state.sessionWrong + 1,
+        wrongVocabIds: [...wrongIds],
       };
       this.emit();
       this.wrongFlashHandle = setTimeout(() => this.resolveWrongFlash(), WRONG_FLASH_MS);

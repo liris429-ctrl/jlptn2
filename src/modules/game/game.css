@@ -31,6 +31,10 @@
   color: var(--ink-soft);
 }
 
+.game-combo {
+  display: inline-block;
+}
+
 /* Escalating warm-orange as combo climbs - reuses --accent, no new hues. */
 .game-combo--tier1 {
   color: color-mix(in srgb, var(--accent) 35%, var(--ink-faint));
@@ -45,6 +49,37 @@
 .game-combo--tier3 {
   color: var(--accent);
   font-weight: 700;
+}
+
+@keyframes combo-pop {
+  0% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes combo-milestone {
+  0% {
+    transform: scale(1.6);
+    text-shadow: 0 0 12px var(--accent);
+  }
+  60% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 0 transparent;
+  }
+}
+
+.game-combo--pop {
+  animation: combo-pop 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.game-combo--milestone {
+  animation: combo-milestone 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .game-progress-track {
@@ -197,6 +232,9 @@
 
 .game-result {
   text-align: center;
+  max-width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
   background: var(--paper-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
@@ -206,4 +244,22 @@
 
 .game-result p {
   margin: 0 0 var(--space-1);
+}
+
+.game-wrong-words {
+  margin-top: var(--space-4);
+  text-align: left;
+}
+
+.game-wrong-words h3 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  margin: 0 0 var(--space-2);
+}
+
+.game-result-more {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  margin: var(--space-2) 0 0;
 }
