@@ -60,7 +60,8 @@ export function renderVocabTabView(container: HTMLElement): void {
   container.append(
     el("div", { className: "search-page" }, [
       levelRow,
-      el("div", { className: "search-controls" }, [input, favoritesToggle, weakToggle, memorizeToggle]),
+      input,
+      el("div", { className: "search-controls" }, [favoritesToggle, weakToggle, memorizeToggle]),
       resultsEl,
     ]),
   );

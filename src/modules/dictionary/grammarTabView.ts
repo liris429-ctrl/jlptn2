@@ -28,7 +28,8 @@ export function renderGrammarTabView(container: HTMLElement): void {
   const resultsEl = el("div", { className: "search-results" });
   container.append(
     el("div", { className: "search-page" }, [
-      el("div", { className: "search-controls" }, [input, favoritesToggle, weakToggle, memorizeToggle]),
+      input,
+      el("div", { className: "search-controls" }, [favoritesToggle, weakToggle, memorizeToggle]),
       resultsEl,
     ]),
   );
