@@ -1,10 +1,16 @@
 import type { JlptLevel, VocabEntry } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import { el } from "../../utils/dom.ts";
+import { compareYomi } from "../../utils/kana.ts";
+import { renderVirtualList, type VirtualListHandle } from "../../utils/virtualList.ts";
 import { isFavorite, subscribeFavorites } from "../favorites/favoritesStore.ts";
 import { isWeak, subscribeWeak } from "../memorize/weakWordsStore.ts";
 import { search } from "../search/searchIndex.ts";
 import { renderVocabCard, renderVocabMemorizeCard } from "./entryCard.ts";
+
+// Mirrors --space-3 (0.75rem, 16px root): the virtual list positions rows with
+// `transform` instead of flexbox `gap`, so it needs the same spacing as a literal.
+const RESULT_GAP_PX = 12;
 
 type LevelFilter = "all" | JlptLevel;
 const LEVEL_OPTIONS: [LevelFilter, string][] = [
@@ -36,10 +42,9 @@ export function renderVocabTabView(container: HTMLElement): void {
   ]);
   const resultsEl = el("div", { className: "search-results" });
 
-  // Single-select, defaults to N2 - the vocab library now spans N1-N5, but this
-  // app is still 「N2たん」at heart, so N2 stays the default lens unless the
-  // user deliberately widens or narrows it.
-  let level: LevelFilter = "N2";
+  // Single-select, defaults to "all" - browsing opens straight onto the full
+  // library; narrowing to one JLPT level is an opt-in, not the starting point.
+  let level: LevelFilter = "all";
   const levelButtons = new Map<LevelFilter, HTMLButtonElement>();
   const levelRow = el(
     "div",
@@ -102,6 +107,7 @@ export function renderVocabTabView(container: HTMLElement): void {
     () => {
       unsubscribeFavorites();
       unsubscribeWeak();
+      virtualList?.destroy();
     },
     { once: true },
   );
@@ -110,19 +116,55 @@ export function renderVocabTabView(container: HTMLElement): void {
     return memorizeMode ? renderVocabMemorizeCard(entry) : renderVocabCard(entry);
   }
 
-  function renderResults(): void {
+  // Torn down at the start of every renderResults() call - without this, each
+  // re-render would leave the previous call's scroll listener attached to
+  // resultsEl (it's never replaced, only its children are).
+  let virtualList: VirtualListHandle | null = null;
+
+  // Bumped on every renderList() call so an in-flight chunked memorize-mode
+  // append (see below) can tell it's been superseded and stop instead of
+  // piling stale cards into a list the user has already navigated away from.
+  let renderToken = 0;
+
+  function renderList(list: VocabEntry[]): void {
+    virtualList?.destroy();
+    virtualList = null;
     resultsEl.innerHTML = "";
+    const token = ++renderToken;
+    if (memorizeMode) {
+      // 暗記模式 cards hold local "revealed" state in a closure; recycling them
+      // via the virtual list would reset that state every time a card scrolls
+      // out of view and back in. Sessions here are normally scoped to a small
+      // list (favorites/weak), but the level filter defaults to 全部, so this
+      // can still mean 10,000+ cards - append in chunks across animation
+      // frames instead of one blocking loop, so the tab doesn't freeze while
+      // every card in it stays a real, always-in-DOM element.
+      let i = 0;
+      const step = (): void => {
+        if (token !== renderToken) return;
+        const end = Math.min(i + 200, list.length);
+        const fragment = document.createDocumentFragment();
+        for (; i < end; i++) fragment.append(renderEntry(list[i]!));
+        resultsEl.append(fragment);
+        if (i < list.length) requestAnimationFrame(step);
+      };
+      step();
+    } else {
+      virtualList = renderVirtualList(resultsEl, list, renderEntry, RESULT_GAP_PX);
+    }
+  }
+
+  function renderResults(): void {
     const query = input.value.trim();
 
     if (!query) {
-      if (!favoritesOnly && !weakOnly) {
-        resultsEl.append(el("p", { className: "search-hint" }, ["輸入漢字、假名或中文開始查詢"]));
-        return;
-      }
       let list = filterByLevel(getStoreSync().vocab);
       if (favoritesOnly) list = list.filter((v) => isFavorite("vocab", v.id));
       if (weakOnly) list = list.filter((v) => isWeak("vocab", v.id));
       if (list.length === 0) {
+        virtualList?.destroy();
+        virtualList = null;
+        resultsEl.innerHTML = "";
         resultsEl.append(
           el("p", { className: "search-empty" }, [
             weakOnly
@@ -132,7 +174,8 @@ export function renderVocabTabView(container: HTMLElement): void {
         );
         return;
       }
-      for (const entry of list) resultsEl.append(renderEntry(entry));
+      list = [...list].sort((a, b) => compareYomi(a.yomi, b.yomi));
+      renderList(list);
       return;
     }
 
@@ -141,12 +184,15 @@ export function renderVocabTabView(container: HTMLElement): void {
     filtered = favoritesOnly ? filtered.filter((v) => isFavorite("vocab", v.id)) : filtered;
     filtered = weakOnly ? filtered.filter((v) => isWeak("vocab", v.id)) : filtered;
     if (filtered.length === 0) {
+      virtualList?.destroy();
+      virtualList = null;
+      resultsEl.innerHTML = "";
       resultsEl.append(
         el("p", { className: "search-empty" }, [`找不到「${query}」，試試看用假名或中文查詢？`]),
       );
       return;
     }
-    for (const entry of filtered) resultsEl.append(renderEntry(entry));
+    renderList(filtered);
   }
 
   let debounceHandle: ReturnType<typeof setTimeout> | undefined;

@@ -18,6 +18,14 @@ import { el } from "./utils/dom.ts";
 import { NAV_ICONS } from "./utils/navIcons.ts";
 import { registerServiceWorker } from "./pwa/registerSW.ts";
 
+type TabKey = "grammar" | "vocab" | "game";
+
+const TAB_LABELS: Record<TabKey, string> = {
+  grammar: "文法",
+  vocab: "單字",
+  game: "日文練習",
+};
+
 function makeNavTab(icon: string, label: string): HTMLButtonElement {
   const iconWrap = el("span", { className: "nav-icon-wrap", "aria-hidden": "true" });
   iconWrap.innerHTML = icon;
@@ -41,9 +49,8 @@ async function main(): Promise<void> {
   gameTab.addEventListener("click", () => navigate("/game"));
   nav.append(grammarTab, vocabTab, gameTab);
 
-  const header = el("header", { className: "app-header" }, [
-    el("h1", { className: "app-title" }, ["N2たん"]),
-  ]);
+  const titleEl = el("h1", { className: "app-title" }, ["N2たん"]);
+  const header = el("header", { className: "app-header" }, [titleEl]);
 
   app.append(header, view, nav);
 
@@ -52,42 +59,43 @@ async function main(): Promise<void> {
   await loadStore();
   loadingNotice.remove();
 
-  const setActiveTab = (path: string): void => {
-    grammarTab.classList.toggle("nav-tab--active", path === "/grammar");
-    vocabTab.classList.toggle("nav-tab--active", path === "/vocab");
-    gameTab.classList.toggle("nav-tab--active", path.startsWith("/game"));
+  const setActiveTab = (tab: TabKey | null): void => {
+    grammarTab.classList.toggle("nav-tab--active", tab === "grammar");
+    vocabTab.classList.toggle("nav-tab--active", tab === "vocab");
+    gameTab.classList.toggle("nav-tab--active", tab === "game");
+    titleEl.textContent = tab ? TAB_LABELS[tab] : "N2たん";
   };
 
   registerRoute("/", () => {
-    setActiveTab("/grammar");
+    setActiveTab("grammar");
     renderGrammarTabView(view);
   });
   registerRoute("/grammar", () => {
-    setActiveTab("/grammar");
+    setActiveTab("grammar");
     renderGrammarTabView(view);
   });
   registerRoute("/vocab", () => {
-    setActiveTab("/vocab");
+    setActiveTab("vocab");
     renderVocabTabView(view);
   });
   registerRoute("/vocab/:id", (params) => {
-    setActiveTab("");
+    setActiveTab(null);
     renderVocabDetailView(view, params);
   });
   registerRoute("/grammar/:id", (params) => {
-    setActiveTab("");
+    setActiveTab(null);
     renderGrammarDetailView(view, params);
   });
   registerRoute("/game", () => {
-    setActiveTab("/game");
+    setActiveTab("game");
     renderGameHubView(view);
   });
   registerRoute("/game/match", () => {
-    setActiveTab("/game");
+    setActiveTab("game");
     renderGameView(view);
   });
   registerRoute("/game/quiz", () => {
-    setActiveTab("/game");
+    setActiveTab("game");
     renderQuizView(view);
   });
 

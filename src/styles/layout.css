@@ -1,7 +1,15 @@
 #app {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  /* Must be a hard cap, not just a floor: .app-view relies on being squeezed to
+     "remaining space after header/nav" so its own overflow-y:auto can kick in
+     and scroll internally. With only min-height, #app was free to grow to fit
+     all of its content instead, so .app-view's height (and .search-results'
+     nested inside it) tracked content size 1:1 and never actually clipped -
+     harmless for short lists, but it meant .app-view's internal scrolling never
+     really worked and silently masked itself as "the whole page scrolls".
+  */
+  height: 100dvh;
 }
 
 .app-header {

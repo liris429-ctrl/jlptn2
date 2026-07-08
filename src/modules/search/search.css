@@ -2,6 +2,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  /* Bounds the page to .app-view's content height so .search-results below can
+     become its own scroll region instead of growing the whole page - the
+     level/search/filter controls stay pinned, only the list scrolls. */
+  height: 100%;
+  min-height: 0;
 }
 
 .search-controls {
@@ -18,8 +23,11 @@
 }
 
 .search-input {
-  flex: 1;
-  min-width: 0;
+  /* No flex-grow here: it's a direct child of the .search-page column now (its
+     own row, per the grammar/vocab search-box-squeeze fix), not sharing a row
+     with the filter chips anymore - flex:1 would fight .search-results for
+     .search-page's now-bounded height instead of just sizing to its own text. */
+  flex-shrink: 0;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-input);
@@ -54,7 +62,6 @@
   color: var(--ink-faint);
 }
 
-.search-hint,
 .search-empty {
   color: var(--ink-faint);
   text-align: center;
@@ -65,6 +72,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Anchors the virtual list's absolutely-positioned spacer/content (see
+     src/utils/virtualList.ts) - harmless for the non-virtualized (memorize
+     mode, grammar tab) case, which just renders normally inside this box. */
+  position: relative;
 }
 
 .result-card {
