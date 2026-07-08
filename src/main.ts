@@ -35,6 +35,27 @@ function makeNavTab(icon: string, label: string): HTMLButtonElement {
   ]);
 }
 
+/** Mimics .result-card's shape (kind badge / primary+meaning lines / star) so
+ * the first paint already hints at what's coming, instead of a bare spinner. */
+function renderLoadingSkeleton(container: HTMLElement, rows = 5): HTMLElement {
+  const list = el(
+    "div",
+    { className: "skeleton-list" },
+    Array.from({ length: rows }, (_, i) => {
+      const row = el("div", { className: "skeleton-row" }, [
+        el("span", { className: "skeleton-block skeleton-block--kind" }),
+        el("span", { className: "skeleton-block skeleton-block--primary" }),
+        el("span", { className: "skeleton-block skeleton-block--meaning" }),
+        el("span", { className: "skeleton-block skeleton-block--star" }),
+      ]);
+      for (const block of row.children) (block as HTMLElement).style.animationDelay = `${i * 0.08}s`;
+      return row;
+    }),
+  );
+  container.append(list);
+  return list;
+}
+
 async function main(): Promise<void> {
   const app = document.querySelector<HTMLDivElement>("#app")!;
   app.innerHTML = "";
@@ -54,10 +75,9 @@ async function main(): Promise<void> {
 
   app.append(header, view, nav);
 
-  const loadingNotice = el("p", { className: "loading-notice" }, ["載入資料中…"]);
-  view.append(loadingNotice);
+  const skeleton = renderLoadingSkeleton(view);
   await loadStore();
-  loadingNotice.remove();
+  skeleton.remove();
 
   const setActiveTab = (tab: TabKey | null): void => {
     grammarTab.classList.toggle("nav-tab--active", tab === "grammar");

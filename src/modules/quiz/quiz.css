@@ -95,11 +95,13 @@
   font-family: var(--font-jp-serif);
   font-size: 1.25rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   margin: 0;
 }
 
 .quiz-accuracy {
   color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
   margin: 0;
 }
 
@@ -108,10 +110,8 @@
 }
 
 .quiz-review-item {
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
   border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-1);
   padding: var(--space-4);
   margin-top: var(--space-3);
   display: flex;

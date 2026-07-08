@@ -39,15 +39,17 @@
   margin-top: var(--space-6);
 }
 
+/* Flat, tinted background instead of border+shadow: this is a formatted-info
+   block, not a clickable surface, so it shouldn't share the "elevated card"
+   treatment reserved for things you can actually tap (.result-card, .hub-row,
+   .quiz-option). Same recipe as .note-item. */
 .forms-table {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2) var(--space-4);
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
   border-radius: var(--radius-panel);
   padding: var(--space-4);
-  box-shadow: var(--shadow-1);
 }
 
 .form-row {
@@ -99,12 +101,10 @@
 }
 
 .conjunction-box {
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
   border-radius: var(--radius-panel);
   padding: var(--space-4);
   font-size: 0.9375rem;
-  box-shadow: var(--shadow-1);
 }
 
 .explanation-ja {
@@ -119,10 +119,8 @@
 }
 
 .example-card {
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
   border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-1);
   padding: var(--space-4);
   margin-top: var(--space-3);
 }

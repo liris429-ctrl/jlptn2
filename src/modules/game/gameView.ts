@@ -68,9 +68,9 @@ function renderStatusBar(
     restartBtn,
   ]);
 
-  const progressPct = Math.max(0, Math.min(100, (state.timeRemaining / ROUND_SECONDS) * 100));
+  const progressFraction = Math.max(0, Math.min(1, state.timeRemaining / ROUND_SECONDS));
   const progressFill = el("div", { className: "game-progress-fill" });
-  progressFill.style.width = `${progressPct}%`;
+  progressFill.style.transform = `scaleX(${progressFraction})`;
   const progressTrack = el("div", { className: "game-progress-track" }, [progressFill]);
 
   container.append(statsRow, progressTrack);
