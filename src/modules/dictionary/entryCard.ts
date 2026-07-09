@@ -58,7 +58,6 @@ export function renderGrammarCard(entry: GrammarEntry): HTMLElement {
     "result-card result-card--grammar",
     () => navigate(`/grammar/${entry.id}`),
     [
-      el("span", { className: "result-kind" }, ["文法"]),
       el("span", { className: "result-primary" }, [entry.pattern]),
       el("span", { className: "result-meaning" }, [entry.meaning]),
       renderFavoriteToggle("grammar", entry.id),
@@ -87,7 +86,6 @@ export function renderVocabCard(entry: VocabEntry): HTMLElement {
     "result-card result-card--vocab",
     () => navigate(`/vocab/${entry.id}`),
     [
-      el("span", { className: "result-kind" }, ["單字"]),
       el("span", { className: "result-primary" }, [entry.kanji]),
       el("span", { className: "result-secondary" }, [
         ...buildVocabSecondaryPrefix(entry),
@@ -102,7 +100,6 @@ export function renderGrammarMemorizeCard(entry: GrammarEntry): HTMLElement {
   return renderMemorizeCard({
     kind: "grammar",
     id: entry.id,
-    kindLabel: "文法",
     primary: el("span", { className: "result-primary" }, [entry.pattern]),
     secondaryPrefix: [],
     controls: renderFavoriteToggle("grammar", entry.id),
@@ -114,7 +111,6 @@ export function renderVocabMemorizeCard(entry: VocabEntry): HTMLElement {
   return renderMemorizeCard({
     kind: "vocab",
     id: entry.id,
-    kindLabel: "單字",
     primary: el("span", { className: "result-primary" }, [entry.kanji]),
     secondaryPrefix: buildVocabSecondaryPrefix(entry),
     controls: buildVocabControls(entry),
@@ -132,13 +128,12 @@ export function renderVocabMemorizeCard(entry: VocabEntry): HTMLElement {
 function renderMemorizeCard(opts: {
   kind: FavoriteKind;
   id: string;
-  kindLabel: string;
   primary: HTMLElement;
   secondaryPrefix: HTMLElement[];
   controls: HTMLElement;
   meaning: string;
 }): HTMLElement {
-  const { kind, id, kindLabel, primary, secondaryPrefix, meaning, controls } = opts;
+  const { kind, id, primary, secondaryPrefix, meaning, controls } = opts;
 
   const occludeBtn = el("button", {
     className: "occlude-block",
@@ -178,7 +173,6 @@ function renderMemorizeCard(opts: {
   });
 
   return el("div", { className: "result-card result-card--memorize" }, [
-    el("span", { className: "result-kind" }, [kindLabel]),
     primary,
     el("div", { className: "result-secondary" }, [...secondaryPrefix, answerRow]),
     controls,

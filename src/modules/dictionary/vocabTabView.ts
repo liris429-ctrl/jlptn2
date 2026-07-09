@@ -28,7 +28,7 @@ export function renderVocabTabView(container: HTMLElement): void {
   const input = el("input", {
     type: "search",
     className: "search-input",
-    placeholder: "查詢單字（漢字・假名・中文皆可）",
+    placeholder: "查詢",
     autofocus: "true",
   });
   const favoritesToggle = el("button", { className: "chip filter-toggle", type: "button" }, [
@@ -50,11 +50,11 @@ export function renderVocabTabView(container: HTMLElement): void {
     "div",
     { className: "level-filter-row" },
     LEVEL_OPTIONS.map(([value, label]) => {
-      const btn = el("button", { className: "chip filter-toggle", type: "button" }, [label]);
-      btn.classList.toggle("filter-toggle--active", value === level);
+      const btn = el("button", { className: "level-segment", type: "button" }, [label]);
+      btn.classList.toggle("level-segment--active", value === level);
       btn.addEventListener("click", () => {
         level = value;
-        for (const [v, b] of levelButtons) b.classList.toggle("filter-toggle--active", v === level);
+        for (const [v, b] of levelButtons) b.classList.toggle("level-segment--active", v === level);
         renderResults();
       });
       levelButtons.set(value, btn);

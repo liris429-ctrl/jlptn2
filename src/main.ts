@@ -35,15 +35,14 @@ function makeNavTab(icon: string, label: string): HTMLButtonElement {
   ]);
 }
 
-/** Mimics .result-card's shape (kind badge / primary+meaning lines / star) so
- * the first paint already hints at what's coming, instead of a bare spinner. */
+/** Mimics .result-card's shape (primary+meaning lines / star) so the first
+ * paint already hints at what's coming, instead of a bare spinner. */
 function renderLoadingSkeleton(container: HTMLElement, rows = 5): HTMLElement {
   const list = el(
     "div",
     { className: "skeleton-list" },
     Array.from({ length: rows }, (_, i) => {
       const row = el("div", { className: "skeleton-row" }, [
-        el("span", { className: "skeleton-block skeleton-block--kind" }),
         el("span", { className: "skeleton-block skeleton-block--primary" }),
         el("span", { className: "skeleton-block skeleton-block--meaning" }),
         el("span", { className: "skeleton-block skeleton-block--star" }),

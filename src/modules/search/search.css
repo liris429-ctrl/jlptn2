@@ -16,10 +16,33 @@
   gap: var(--space-2);
 }
 
+/* Single-select segmented control - joined into one bar rather than the
+   individually-pilled .filter-toggle chips below it (favorites/weak/memorize),
+   which are independent on/off switches, not a mutually-exclusive choice. */
 .level-filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.level-segment {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-caption);
+  color: var(--ink-soft);
+  border-right: 1px solid var(--line-strong);
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.level-segment:last-child {
+  border-right: none;
+}
+
+.level-segment--active {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 .search-input {
@@ -98,22 +121,29 @@
      still, to fit a dense 4-column grid on a phone screen).
   3. Pill radius (--radius-pill): .chip, .occlude-btn, .btn.
   4. Tag radius (--radius-tag, 6px, new) + --space-1/--space-2 padding: inline
-     badge/label chrome - .result-kind, .result-level, .jlpt-badge, .pos-badge,
+     badge/label chrome - .result-level, .jlpt-badge, .pos-badge,
      .pitch-badge (dictionary.css).
 
   Info order (already consistent, documented here so new screens follow it
   rather than improvising):
-    - List rows: [identifier/icon] -> [primary + secondary content] ->
-      [control/affordance]. See .result-card / .hub-row.
+    - List rows: [primary + secondary content] -> [control/affordance]. No
+      leading kind badge on .result-card - the grammar/vocab tab you're
+      already on makes that redundant, unlike .hub-row's icon (which
+      distinguishes between two options on the *same* screen).
     - Detail pages: [back nav] -> [identity: heading + favorite] ->
       [(vocab only) meta badges] -> [core meaning] -> [structured grammar
       info] -> [examples] -> [supplementary refs/related].
     - Result/summary screens: [title] -> [stats] -> [detail list] -> [CTA].
       See quiz-finished and the game-over overlay.
+
+  .result-card padding is a documented deviation from family 1's usual
+  uniform --space-4: these rows repeat dozens of times in a scrolling list,
+  so vertical padding is trimmed to --space-2 to fit more on screen at once,
+  while horizontal stays --space-4 for a comfortable tap width.
 */
 .result-card {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   column-gap: var(--space-3);
   row-gap: var(--space-1);
   align-items: baseline;
@@ -123,7 +153,7 @@
   border-radius: var(--radius-panel);
   background: var(--paper-raised);
   box-shadow: var(--shadow-1);
-  padding: var(--space-4);
+  padding: var(--space-2) var(--space-4);
   transition: box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
 }
@@ -139,22 +169,12 @@
   box-shadow: var(--shadow-1);
 }
 
-.result-kind {
-  grid-row: 1 / 3;
-  align-self: start;
-  font-size: var(--text-tag);
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--moss);
-  background: var(--moss-soft);
-  border-radius: var(--radius-tag);
-  padding: var(--space-1) var(--space-2);
-}
-
 /* Tier 1 (primary): the word itself - kept alone on its own row so it reads as
-   the card's headline, not sharing visual weight with reading/meaning/tags. */
+   the card's headline, not sharing visual weight with reading/meaning/tags.
+   Bold weight + inherited (full-strength) --ink color are what give it
+   contrast against tier 2 below, which is deliberately toned down instead. */
 .result-primary {
-  grid-column: 2;
+  grid-column: 1;
   font-family: var(--font-jp-serif);
   font-size: var(--text-section);
   font-weight: 700;
@@ -165,7 +185,7 @@
 /* Tier 2 (secondary): reading + part-of-speech + meaning on one line, all toned
    down relative to tier 1 - this is supporting info, not the headline. */
 .result-secondary {
-  grid-column: 2;
+  grid-column: 1;
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -188,11 +208,14 @@
   flex-shrink: 0;
 }
 
+/* --ink-faint (not --ink-soft) is the point: this needs to read as
+   unmistakably secondary next to tier 1's bold full-strength --ink, not just
+   a slightly softer version of the same weight. */
 .result-meaning {
-  grid-column: 2;
+  grid-column: 1;
   flex: 1;
   min-width: 0;
-  color: var(--ink-soft);
+  color: var(--ink-faint);
   font-size: var(--text-caption);
   text-wrap: pretty;
   display: -webkit-box;
@@ -203,15 +226,18 @@
 
 /* Tier 3 (control): JLPT level + favorite toggle, grouped together and set apart
    from the word/meaning content instead of the level badge sitting inline with
-   the headline (as it did before this layout pass). */
+   the headline (as it did before this layout pass). Row (not column) layout is
+   deliberate: the star's 44px tap target is already taller than the two text
+   rows combined, so stacking the badge above it would make this column - not
+   the content - the tallest thing in the card and inflate every row's height. */
 .result-control {
   grid-row: 1 / 3;
-  grid-column: 3;
+  grid-column: 2;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .result-level {

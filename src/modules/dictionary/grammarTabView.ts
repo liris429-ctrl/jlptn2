@@ -13,7 +13,7 @@ export function renderGrammarTabView(container: HTMLElement): void {
   const input = el("input", {
     type: "search",
     className: "search-input",
-    placeholder: "查詢文法（漢字・假名・中文皆可）",
+    placeholder: "查詢",
     autofocus: "true",
   });
   const favoritesToggle = el("button", { className: "chip filter-toggle", type: "button" }, [

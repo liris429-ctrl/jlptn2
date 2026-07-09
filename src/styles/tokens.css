@@ -38,9 +38,9 @@
   --radius-panel: 14px;
   --radius-input: 10px;
   --radius-pill: 999px;
-  /* Inline badge/tag chrome (result-kind, jlpt/pos/pitch-badge, result-level) -
-     smaller than radius-input because these never contain a full control,
-     just a short label. */
+  /* Inline badge/tag chrome (jlpt/pos/pitch-badge, result-level) - smaller
+     than radius-input because these never contain a full control, just a
+     short label. */
   --radius-tag: 6px;
 
   --shadow-1: 0 1px 2px rgba(28, 43, 42, 0.06);
@@ -79,8 +79,8 @@
              state, hover preview on selectable controls. Never used for
              purely decorative emphasis (see .game-combo-- tiers using
              --success instead, for exactly this reason).
-  --moss     decorative label tint only (result-kind, pos-badge, hub-row
-             icons) - never implies "this is interactive".
+  --moss     decorative label tint only (pos-badge, hub-row icons) - never
+             implies "this is interactive".
   --success  positive outcome feedback (correct answer, matched pair,
              remembered word, climbing combo = a streak of correct answers).
   --danger   negative outcome feedback (wrong answer, mismatched pair,
