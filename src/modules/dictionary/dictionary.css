@@ -1,6 +1,8 @@
+/* No explicit font-size here - inherits h1's --text-headline. Word-break rules
+   still need to be set locally since long words/patterns need them, unlike a
+   generic h1. */
 .vocab-heading,
 .grammar-heading {
-  font-size: 2rem;
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
@@ -14,11 +16,11 @@
 .jlpt-badge,
 .pos-badge,
 .pitch-badge {
-  font-size: 0.75rem;
+  font-size: var(--text-tag);
   font-weight: 600;
   letter-spacing: 0.02em;
-  border-radius: 6px;
-  padding: 0.1875rem 0.5rem;
+  border-radius: var(--radius-tag);
+  padding: var(--space-1) var(--space-2);
   color: var(--ink-soft);
   background: color-mix(in srgb, var(--ink) 6%, var(--paper-raised));
 }
@@ -28,21 +30,22 @@
   color: var(--moss);
 }
 
+/* Emphasized lede body - shares --text-section's size (same tier as a
+   subsection heading) but reads as body prose because of the regular weight
+   and softer ink tone, not because it's a different size. */
 .vocab-meaning,
 .grammar-meaning {
-  font-size: 1.125rem;
+  font-size: var(--text-section);
   color: var(--ink-soft);
   max-width: 42ch;
-}
-
-.forms-section {
-  margin-top: var(--space-6);
+  margin-bottom: 0;
 }
 
 /* Flat, tinted background instead of border+shadow: this is a formatted-info
    block, not a clickable surface, so it shouldn't share the "elevated card"
    treatment reserved for things you can actually tap (.result-card, .hub-row,
-   .quiz-option). Same recipe as .note-item. */
+   .quiz-option). Same recipe as .note-item. Panel radius + space-4 padding -
+   see the card anatomy note in search.css for the full family. */
 .forms-table {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -59,24 +62,16 @@
 }
 
 .form-label {
-  font-size: 0.6875rem;
+  font-size: var(--text-tag);
   color: var(--ink-faint);
   letter-spacing: 0.03em;
 }
 
 .form-value {
   font-family: var(--font-jp-serif);
-  font-size: 1.0625rem;
+  font-size: var(--text-body);
   word-break: keep-all;
   overflow-wrap: anywhere;
-}
-
-.conjunction-section,
-.grammar-refs-section,
-.additional-notes-section,
-.examples-section,
-.related-words-section {
-  margin-top: var(--space-6);
 }
 
 .related-word-row {
@@ -92,7 +87,7 @@
 
 .related-word-label {
   flex-shrink: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   color: var(--ink-faint);
 }
 
@@ -104,17 +99,21 @@
   background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
   border-radius: var(--radius-panel);
   padding: var(--space-4);
-  font-size: 0.9375rem;
+  font-size: var(--text-body);
 }
 
+/* margin-top removed - .detail-page's gap now supplies the space before this
+   block, consistent with every other section instead of its own smaller value. */
 .explanation-ja {
-  margin-top: var(--space-4);
   color: var(--ink-soft);
 }
 
+/* Same neutral tone as .detailed-explanation summary below - both are
+   disclosure toggles, not the screen's primary action, so neither should
+   borrow --accent (reserved for the one CTA + selection states). */
 .explanation-ja summary {
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--text-caption);
   color: var(--ink-faint);
 }
 
@@ -129,6 +128,9 @@
   margin-top: 0;
 }
 
+/* Deliberate exception to the type scale: Japanese sentences with ruby
+   furigana annotations need the extra size to stay legible, so this stays a
+   literal value rather than snapping to --text-section/--text-body. */
 .example-jp {
   font-family: var(--font-jp-serif);
   font-size: 1.25rem;
@@ -149,13 +151,13 @@
 
 .detailed-explanation summary {
   cursor: pointer;
-  font-size: 0.875rem;
-  color: var(--accent-ink);
+  font-size: var(--text-caption);
+  color: var(--ink-faint);
 }
 
 .detailed-explanation-body {
   margin-top: var(--space-3);
-  font-size: 0.875rem;
+  font-size: var(--text-body);
   color: var(--ink-soft);
   background: var(--paper-raised);
   border-radius: var(--radius-panel);
@@ -163,7 +165,7 @@
 }
 
 .detailed-explanation-body h3 {
-  font-size: 0.9375rem;
+  font-size: var(--text-body);
   margin-top: var(--space-4);
 }
 
@@ -175,10 +177,13 @@
   padding-left: 1.1em;
 }
 
+/* Same flat-tinted-block recipe as .conjunction-box/.example-card/.forms-table
+   above - panel radius + uniform space-4 padding, not radius-input's smaller
+   radius/asymmetric padding (which is for interactive controls, not this). */
 .note-item {
   background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
-  border-radius: var(--radius-input);
-  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-panel);
+  padding: var(--space-4);
   margin-top: var(--space-2);
 }
 

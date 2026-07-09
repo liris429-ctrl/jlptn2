@@ -57,7 +57,7 @@ function renderStatusBar(
   onRestart: () => void,
 ): void {
   container.innerHTML = "";
-  const restartBtn = el("button", { className: "game-restart", type: "button" }, ["重新開始"]);
+  const restartBtn = el("button", { className: "btn btn--secondary", type: "button" }, ["重新開始"]);
   restartBtn.addEventListener("click", onRestart);
 
   const comboClass = `game-combo${comboTierClass(state.combo)}${comboPopClass(state.combo, previousCombo)}`;
@@ -138,13 +138,13 @@ function renderOverlay(container: HTMLElement, state: GameState, onRestart: () =
     ? Math.round((state.sessionTotalMatches / (state.sessionTotalMatches + state.sessionWrong)) * 100)
     : 100;
 
-  const again = el("button", { className: "game-restart game-restart--primary", type: "button" }, [
+  const again = el("button", { className: "btn btn--primary", type: "button" }, [
     "再玩一次",
   ]);
   again.addEventListener("click", onRestart);
 
   const resultChildren: (Node | string)[] = [
-    el("h2", {}, ["時間到！"]),
+    el("h1", {}, ["時間到！"]),
     el("p", {}, [`總消除數：${state.sessionTotalMatches}`]),
     el("p", {}, [`最高 Combo：${state.maxCombo}`]),
     el("p", {}, [`正確率：${accuracy}%`]),

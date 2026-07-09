@@ -52,7 +52,7 @@
 
 .hub-row-subtitle {
   color: var(--ink-faint);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   margin: var(--space-1) 0 0;
 }
 
@@ -82,6 +82,9 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Deliberate exception to the type scale: a timer readout carries its own
+   visual weight (same treatment as .quiz-score), not part of the
+   headline/section/body/caption prose hierarchy. */
 .game-timer {
   font-family: var(--font-jp-serif);
   font-size: 1.25rem;
@@ -91,7 +94,7 @@
 
 .game-score,
 .game-combo {
-  font-size: 0.875rem;
+  font-size: var(--text-caption);
   color: var(--ink-soft);
 }
 
@@ -99,19 +102,22 @@
   display: inline-block;
 }
 
-/* Escalating warm-orange as combo climbs - reuses --accent, no new hues. */
+/* Escalating green as combo climbs - a streak of correct matches is a
+   --success story, not an --accent one. --accent stays reserved for
+   interactive affordances (see tokens.css); this is purely decorative
+   excitement and shouldn't borrow the interactive hue. */
 .game-combo--tier1 {
-  color: color-mix(in srgb, var(--accent) 35%, var(--ink-faint));
+  color: color-mix(in srgb, var(--success) 35%, var(--ink-faint));
   font-weight: 600;
 }
 
 .game-combo--tier2 {
-  color: color-mix(in srgb, var(--accent) 65%, var(--ink-faint));
+  color: color-mix(in srgb, var(--success) 65%, var(--ink-faint));
   font-weight: 700;
 }
 
 .game-combo--tier3 {
-  color: var(--accent);
+  color: var(--success);
   font-weight: 700;
 }
 
@@ -127,7 +133,7 @@
 @keyframes combo-milestone {
   0% {
     transform: scale(1.6);
-    text-shadow: 0 0 12px var(--accent);
+    text-shadow: 0 0 12px var(--success);
   }
   60% {
     transform: scale(1);
@@ -162,20 +168,11 @@
   transition: transform 1s linear;
 }
 
-.game-restart {
+/* Pushes the restart button to the end of the timer/score/combo row - scoped
+   here rather than baked into the shared .btn, which has no opinion about its
+   position in a flex row. */
+.game-status-row .btn {
   margin-left: auto;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill);
-  padding: var(--space-1) var(--space-3);
-  background: var(--paper-raised);
-  font-size: 0.8125rem;
-}
-
-.game-restart--primary {
-  background: var(--accent);
-  color: var(--paper-raised);
-  border-color: var(--accent);
-  margin-left: 0;
 }
 
 .game-grid {
@@ -325,7 +322,7 @@
 }
 
 .game-wrong-words h3 {
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   color: var(--ink-faint);
   margin: 0 0 var(--space-2);

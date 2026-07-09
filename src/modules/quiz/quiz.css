@@ -14,7 +14,7 @@
 
 .quiz-hint {
   color: var(--ink-faint);
-  font-size: 0.875rem;
+  font-size: var(--text-caption);
 }
 
 .quiz-count-row {
@@ -25,14 +25,16 @@
 
 .quiz-progress {
   color: var(--ink-faint);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
   margin: 0;
 }
 
+/* Emphasized lede body - same tier/size as a section heading (--text-section),
+   reads as body prose here because of the regular weight and serif voice. */
 .quiz-question {
   font-family: var(--font-jp-serif);
-  font-size: 1.1875rem;
+  font-size: var(--text-section);
   line-height: 1.8;
   word-break: keep-all;
   overflow-wrap: anywhere;
@@ -48,7 +50,7 @@
 .quiz-option {
   text-align: left;
   font-family: var(--font-jp-serif);
-  font-size: 1rem;
+  font-size: var(--text-body);
   word-break: keep-all;
   overflow-wrap: anywhere;
   border: 1px solid var(--line-strong);
@@ -59,8 +61,11 @@
   transition: border-color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
 }
 
+/* Thin accent preview on hover, same signal as .chip:hover - the thicker
+   2px + tinted background in .quiz-option--pending below is the "confirmed
+   selection" version of this same accent language, not a different one. */
 .quiz-option:not(:disabled):hover {
-  border-color: var(--ink-faint);
+  border-color: var(--accent);
 }
 
 .quiz-option:not(:disabled):active {
@@ -88,15 +93,21 @@
   opacity: 0.6;
 }
 
+/* Flat tinted info block - same family as .conjunction-box/.note-item
+   (dictionary.css), so it gets panel radius + body-tier text, not input
+   radius (that's for interactive controls, which this isn't). */
 .quiz-explanation {
   background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
-  border-radius: var(--radius-input);
-  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-panel);
+  padding: var(--space-4);
   color: var(--ink-soft);
-  font-size: 0.9375rem;
+  font-size: var(--text-body);
   line-height: 1.7;
 }
 
+/* Deliberate exception to the type scale: an emphasized result number, same
+   treatment as .game-timer - carries its own visual weight rather than
+   fitting the headline/section/body/caption prose hierarchy. */
 .quiz-score {
   font-family: var(--font-jp-serif);
   font-size: 1.25rem;
@@ -130,11 +141,11 @@
 }
 
 .quiz-review-item .quiz-question {
-  font-size: 1rem;
+  font-size: var(--text-body);
 }
 
 .quiz-review-answer {
   color: var(--danger);
-  font-size: 0.875rem;
+  font-size: var(--text-caption);
   margin: 0;
 }

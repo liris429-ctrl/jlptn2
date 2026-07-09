@@ -60,7 +60,7 @@ function renderSetup(engine: QuizEngine): HTMLElement {
     }),
   );
 
-  const startBtn = el("button", { className: "game-restart game-restart--primary", type: "button" }, [
+  const startBtn = el("button", { className: "btn btn--primary", type: "button" }, [
     "開始測驗",
   ]);
   if (available === 0) {
@@ -70,7 +70,7 @@ function renderSetup(engine: QuizEngine): HTMLElement {
   }
 
   return el("div", { className: "quiz-setup" }, [
-    el("h2", {}, ["實戰考題"]),
+    el("h1", {}, ["實戰考題"]),
     el("p", { className: "quiz-hint" }, [
       available === 0
         ? "目前還沒有題庫，晚點再回來看看"
@@ -109,7 +109,7 @@ function renderPlaying(state: QuizState, engine: QuizEngine): HTMLElement {
   if (!confirmed) {
     // Pending pick still needs an explicit 確定 tap - grading/explanation/next
     // only appear after that, so a stray click can't accidentally submit an answer.
-    const confirmBtn = el("button", { className: "game-restart game-restart--primary", type: "button" }, ["確定"]);
+    const confirmBtn = el("button", { className: "btn btn--primary", type: "button" }, ["確定"]);
     if (state.pendingIndex === null) confirmBtn.setAttribute("disabled", "true");
     else confirmBtn.addEventListener("click", () => engine.confirmAnswer());
     children.push(confirmBtn);
@@ -118,7 +118,7 @@ function renderPlaying(state: QuizState, engine: QuizEngine): HTMLElement {
       children.push(el("div", { className: "quiz-explanation" }, [question.explanation]));
     }
     const isLast = state.currentIndex === state.questions.length - 1;
-    const nextBtn = el("button", { className: "game-restart game-restart--primary", type: "button" }, [
+    const nextBtn = el("button", { className: "btn btn--primary", type: "button" }, [
       isLast ? "查看結果" : "下一題",
     ]);
     nextBtn.addEventListener("click", () => engine.next());
@@ -134,13 +134,13 @@ function renderFinished(state: QuizState, engine: QuizEngine): HTMLElement {
   const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0;
   const wrongAnswers = state.answers.filter((a) => !a.correct);
 
-  const restartBtn = el("button", { className: "game-restart game-restart--primary", type: "button" }, [
+  const restartBtn = el("button", { className: "btn btn--primary", type: "button" }, [
     "重新測驗",
   ]);
   restartBtn.addEventListener("click", () => engine.reset());
 
   const children: (Node | string)[] = [
-    el("h2", {}, ["測驗結果"]),
+    el("h1", {}, ["測驗結果"]),
     el("p", { className: "quiz-score" }, [`${total} 題中答對 ${correctCount} 題`]),
     el("p", { className: "quiz-accuracy" }, [`正確率：${accuracy}%`]),
   ];

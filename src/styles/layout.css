@@ -146,17 +146,25 @@
   background: none;
   color: var(--ink-faint);
   padding: var(--space-2) 0;
-  margin: calc(var(--space-2) * -1) 0 var(--space-2);
-  font-size: 1rem;
+  /* Only the negative top offset stays, to counteract the enlarged tap target
+     pushing the button (and everything after it) down - the space below it is
+     now .detail-page's own gap, not a margin baked into this one element. */
+  margin: calc(var(--space-2) * -1) 0 0;
+  font-size: var(--text-body);
 }
 
 .back-button:hover {
   color: var(--accent-ink);
 }
 
+/* Every direct child (back button, heading row, meta, meaning, each
+   section/details block) gets the same --space-6 rhythm from this one gap,
+   instead of each block declaring its own margin-top - see dictionary.css,
+   where the old per-block margin-top rules this replaced are noted. */
 .detail-page {
   display: flex;
   flex-direction: column;
+  gap: var(--space-6);
 }
 
 .chip-row {
@@ -187,10 +195,6 @@
 
 .chip--grammar {
   font-family: var(--font-jp-serif);
-}
-
-section > h2 {
-  margin-top: var(--space-6);
 }
 
 .heading-row {

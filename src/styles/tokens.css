@@ -27,9 +27,21 @@
   --success: #3f7d54;
   --danger: #b3392c;
 
+  /* Warning/info are defined for palette completeness even though nothing
+     uses them yet - reserved for future alerts/notices, not retrofitted onto
+     existing neutral copy just to have a use case. */
+  --warning: #a3760f;
+  --warning-soft: #f1e6cf;
+  --info: #3d6a8a;
+  --info-soft: #dde8ee;
+
   --radius-panel: 14px;
   --radius-input: 10px;
   --radius-pill: 999px;
+  /* Inline badge/tag chrome (result-kind, jlpt/pos/pitch-badge, result-level) -
+     smaller than radius-input because these never contain a full control,
+     just a short label. */
+  --radius-tag: 6px;
 
   --shadow-1: 0 1px 2px rgba(28, 43, 42, 0.06);
   --shadow-2: 0 1px 2px rgba(28, 43, 42, 0.05), 0 10px 28px -14px rgba(28, 43, 42, 0.28);
@@ -37,6 +49,17 @@
   --font-jp-serif: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
   --font-jp-sans: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+
+  /* Typography scale: every font-size in the app should map to one of these
+     four prose tiers, or to --text-tag for non-prose badge/label chrome.
+     Documented, deliberate exceptions (a few "emphasized number/content" spots
+     like .example-jp, .game-timer, .quiz-score) stay outside this scale on
+     purpose - see the comments at their declarations. */
+  --text-headline: 2rem; /* 主標: page/screen headline */
+  --text-section: 1.125rem; /* 段標: subsection headings, also emphasized lede body (meaning/question stem) */
+  --text-body: 1rem; /* 正文: regular explanatory prose */
+  --text-caption: 0.8125rem; /* 輔助文字: hints, metadata, secondary supporting text */
+  --text-tag: 0.6875rem; /* badge/label UI chrome - not part of the prose hierarchy above */
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -48,6 +71,38 @@
 
   color-scheme: light;
 }
+
+/*
+  Color semantics - what each hue is reserved for, so it never has to be
+  guessed at a new call site:
+  --accent   interactive only: the one primary CTA fill, selected/pending
+             state, hover preview on selectable controls. Never used for
+             purely decorative emphasis (see .game-combo-- tiers using
+             --success instead, for exactly this reason).
+  --moss     decorative label tint only (result-kind, pos-badge, hub-row
+             icons) - never implies "this is interactive".
+  --success  positive outcome feedback (correct answer, matched pair,
+             remembered word, climbing combo = a streak of correct answers).
+  --danger   negative outcome feedback (wrong answer, mismatched pair,
+             forgotten word).
+  --warning  reserved for caution/attention notices - not yet used.
+  --info     reserved for neutral system notices - not yet used.
+*/
+
+/*
+  Selectable component states - the shared vocabulary every chip/option/cell
+  should follow:
+    default  -> neutral border (--line-strong), --paper-raised background.
+    hover    -> thin (1px) --accent border: a preview, not a commitment.
+    selected -> thick (2px) --accent border + --accent-soft background -
+                a stronger version of the same hover signal, not a new hue.
+    resolved -> --success/--danger override once there's a right/wrong
+                verdict (quiz grading, game match/mismatch).
+    disabled -> reduced opacity (see `button:disabled` in base.css).
+  The favorite star is a recognized exception: a lone glyph can't carry a
+  border-box treatment, so it swaps icon color instead (--line-strong ->
+  --accent) rather than gaining a border/background.
+*/
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -68,6 +123,11 @@
 
     --success: #7fbd8f;
     --danger: #e08579;
+
+    --warning: #d1a44e;
+    --warning-soft: #3a3221;
+    --info: #7fabc4;
+    --info-soft: #202e35;
 
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.24), 0 14px 32px -16px rgba(0, 0, 0, 0.55);

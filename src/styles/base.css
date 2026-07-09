@@ -36,12 +36,19 @@ h3 {
 }
 
 h1 {
-  font-size: 1.75rem;
+  font-size: var(--text-headline);
 }
 
 h2 {
-  font-size: 1.125rem;
+  font-size: var(--text-section);
   color: var(--ink-soft);
+}
+
+/* Otherwise falls back to the UA default h3 size, which isn't part of this
+   scale at all - individual contexts (e.g. .detailed-explanation-body h3)
+   still override this where a bit more prominence is warranted. */
+h3 {
+  font-size: var(--text-caption);
 }
 
 p {
@@ -56,11 +63,46 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 button:focus-visible,
 input:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
+}
+
+/* Shared button component - .btn--primary is the one accent-filled CTA any
+   given screen should have at most one of; .btn--secondary is the outline
+   fallback for every other action (e.g. mid-round "重新開始"). */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  transition: opacity 0.15s ease, transform 0.12s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn--primary {
+  border: none;
+  background: var(--accent);
+  color: var(--paper-raised);
+}
+
+.btn--secondary {
+  border: 1px solid var(--line-strong);
+  background: var(--paper-raised);
+  color: var(--ink);
 }
 
 a {
