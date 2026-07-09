@@ -4,7 +4,6 @@ import { el } from "../../utils/dom.ts";
 import type { FavoriteKind } from "../favorites/favoritesStore.ts";
 import { isFavorite, toggleFavorite } from "../favorites/favoritesStore.ts";
 import { clearWeak, markWeak } from "../memorize/weakWordsStore.ts";
-import { toRubyHtml } from "../../utils/furigana.ts";
 import { POS_LABEL_SHORT } from "./posLabels.ts";
 
 export function renderFavoriteToggle(
@@ -67,14 +66,20 @@ export function renderGrammarCard(entry: GrammarEntry): HTMLElement {
   );
 }
 
-function buildVocabPrimaryRow(entry: VocabEntry): HTMLElement {
-  const primary = el("span", { className: "result-primary" });
-  primary.innerHTML = toRubyHtml(entry.kanji, entry.yomi);
-  return el("span", { className: "result-primary-row" }, [
-    primary,
+/** Tier 3 "control" cluster: JLPT level + favorite toggle, grouped apart from the word/meaning content. */
+function buildVocabControls(entry: VocabEntry): HTMLElement {
+  return el("span", { className: "result-control" }, [
     el("span", { className: "result-level" }, [entry.jlptLevel]),
-    el("span", { className: "result-pos" }, [POS_LABEL_SHORT[entry.partOfSpeech]]),
+    renderFavoriteToggle("vocab", entry.id),
   ]);
+}
+
+/** Tier 2 "secondary" row content shared by the plain and 暗記模式 cards: reading + part-of-speech tag. */
+function buildVocabSecondaryPrefix(entry: VocabEntry): HTMLElement[] {
+  return [
+    el("span", { className: "result-yomi" }, [entry.yomi]),
+    el("span", { className: "result-pos" }, [POS_LABEL_SHORT[entry.partOfSpeech]]),
+  ];
 }
 
 export function renderVocabCard(entry: VocabEntry): HTMLElement {
@@ -83,9 +88,12 @@ export function renderVocabCard(entry: VocabEntry): HTMLElement {
     () => navigate(`/vocab/${entry.id}`),
     [
       el("span", { className: "result-kind" }, ["單字"]),
-      buildVocabPrimaryRow(entry),
-      el("span", { className: "result-meaning" }, [entry.meaning]),
-      renderFavoriteToggle("vocab", entry.id),
+      el("span", { className: "result-primary" }, [entry.kanji]),
+      el("span", { className: "result-secondary" }, [
+        ...buildVocabSecondaryPrefix(entry),
+        el("span", { className: "result-meaning" }, [entry.meaning]),
+      ]),
+      buildVocabControls(entry),
     ],
   );
 }
@@ -96,6 +104,8 @@ export function renderGrammarMemorizeCard(entry: GrammarEntry): HTMLElement {
     id: entry.id,
     kindLabel: "文法",
     primary: el("span", { className: "result-primary" }, [entry.pattern]),
+    secondaryPrefix: [],
+    controls: renderFavoriteToggle("grammar", entry.id),
     meaning: entry.meaning,
   });
 }
@@ -105,7 +115,9 @@ export function renderVocabMemorizeCard(entry: VocabEntry): HTMLElement {
     kind: "vocab",
     id: entry.id,
     kindLabel: "單字",
-    primary: buildVocabPrimaryRow(entry),
+    primary: el("span", { className: "result-primary" }, [entry.kanji]),
+    secondaryPrefix: buildVocabSecondaryPrefix(entry),
+    controls: buildVocabControls(entry),
     meaning: entry.meaning,
   });
 }
@@ -122,9 +134,11 @@ function renderMemorizeCard(opts: {
   id: string;
   kindLabel: string;
   primary: HTMLElement;
+  secondaryPrefix: HTMLElement[];
+  controls: HTMLElement;
   meaning: string;
 }): HTMLElement {
-  const { kind, id, kindLabel, primary, meaning } = opts;
+  const { kind, id, kindLabel, primary, secondaryPrefix, meaning, controls } = opts;
 
   const occludeBtn = el("button", {
     className: "occlude-block",
@@ -166,7 +180,7 @@ function renderMemorizeCard(opts: {
   return el("div", { className: "result-card result-card--memorize" }, [
     el("span", { className: "result-kind" }, [kindLabel]),
     primary,
-    answerRow,
-    renderFavoriteToggle(kind, id),
+    el("div", { className: "result-secondary" }, [...secondaryPrefix, answerRow]),
+    controls,
   ]);
 }

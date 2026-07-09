@@ -121,19 +121,34 @@
   padding: 0.1875rem 0.4375rem;
 }
 
-.result-primary-row {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
+/* Tier 1 (primary): the word itself - kept alone on its own row so it reads as
+   the card's headline, not sharing visual weight with reading/meaning/tags. */
 .result-primary {
+  grid-column: 2;
   font-family: var(--font-jp-serif);
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   font-weight: 700;
   word-break: keep-all;
   overflow-wrap: anywhere;
+}
+
+/* Tier 2 (secondary): reading + part-of-speech + meaning on one line, all toned
+   down relative to tier 1 - this is supporting info, not the headline. */
+.result-secondary {
+  grid-column: 2;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  row-gap: 2px;
+  min-width: 0;
+}
+
+.result-yomi {
+  font-family: var(--font-jp-sans);
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  flex-shrink: 0;
 }
 
 .result-pos {
@@ -141,6 +156,32 @@
   font-weight: 500;
   color: var(--ink-faint);
   flex-shrink: 0;
+}
+
+.result-meaning {
+  grid-column: 2;
+  flex: 1;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
+
+/* Tier 3 (control): JLPT level + favorite toggle, grouped together and set apart
+   from the word/meaning content instead of the level badge sitting inline with
+   the headline (as it did before this layout pass). */
+.result-control {
+  grid-row: 1 / 3;
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
 }
 
 .result-level {
@@ -152,17 +193,6 @@
   border-radius: 4px;
   padding: 0.0625rem 0.3125rem;
   flex-shrink: 0;
-}
-
-.result-meaning {
-  grid-column: 2;
-  color: var(--ink-soft);
-  font-size: 0.875rem;
-  text-wrap: pretty;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  overflow: hidden;
 }
 
 /* 暗記模式 card: not navigable, so cancel the "this looks like a link" hover/press
@@ -183,7 +213,8 @@
 }
 
 .occlude-row {
-  grid-column: 2;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-2);

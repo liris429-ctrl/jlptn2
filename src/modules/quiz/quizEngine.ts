@@ -1,6 +1,7 @@
 import type { QuizCategory, QuizQuestion } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import { sample } from "../game/shuffle.ts";
+import { recordWrongAnswer } from "./quizWrongAnswerStore.ts";
 
 export type QuizPhase = "setup" | "playing" | "finished";
 
@@ -14,8 +15,10 @@ export interface QuizState {
   phase: QuizPhase;
   questions: QuizQuestion[];
   currentIndex: number;
-  /** This question's pick, null = not answered yet. */
-  selectedIndex: number | null;
+  /** Tentative pick for the current question - not graded yet, can still be changed. */
+  pendingIndex: number | null;
+  /** Set once 確定 is pressed: grading colors, explanation, and the next button all key off this. */
+  confirmedIndex: number | null;
   answers: QuizAnswerRecord[];
 }
 
@@ -31,7 +34,14 @@ export class QuizEngine {
   private listeners = new Set<Listener>();
 
   private static initialState(): QuizState {
-    return { phase: "setup", questions: [], currentIndex: 0, selectedIndex: null, answers: [] };
+    return {
+      phase: "setup",
+      questions: [],
+      currentIndex: 0,
+      pendingIndex: null,
+      confirmedIndex: null,
+      answers: [],
+    };
   }
 
   subscribe(listener: Listener): () => void {
@@ -52,26 +62,31 @@ export class QuizEngine {
       phase: "playing",
       questions,
       currentIndex: 0,
-      selectedIndex: null,
+      pendingIndex: null,
+      confirmedIndex: null,
       answers: [],
     };
     this.emit();
   }
 
-  /** No-op if this question is already answered - locks in the first pick, no changing your mind. */
-  selectAnswer(index: number): void {
-    if (this.state.phase !== "playing" || this.state.selectedIndex !== null) return;
+  /** A tentative pick - can be changed freely by picking a different option, until confirmAnswer() locks it in. */
+  pickOption(index: number): void {
+    if (this.state.phase !== "playing" || this.state.confirmedIndex !== null) return;
+    this.state = { ...this.state, pendingIndex: index };
+    this.emit();
+  }
+
+  /** Grades the pending pick and records it - including logging a wrong pick to the persistent history. */
+  confirmAnswer(): void {
+    if (this.state.phase !== "playing" || this.state.confirmedIndex !== null || this.state.pendingIndex === null) {
+      return;
+    }
     const question = this.state.questions[this.state.currentIndex]!;
-    const record: QuizAnswerRecord = {
-      questionId: question.id,
-      selectedIndex: index,
-      correct: index === question.answer,
-    };
-    this.state = {
-      ...this.state,
-      selectedIndex: index,
-      answers: [...this.state.answers, record],
-    };
+    const index = this.state.pendingIndex;
+    const correct = index === question.answer;
+    if (!correct) recordWrongAnswer(question.id);
+    const record: QuizAnswerRecord = { questionId: question.id, selectedIndex: index, correct };
+    this.state = { ...this.state, confirmedIndex: index, answers: [...this.state.answers, record] };
     this.emit();
   }
 
@@ -81,13 +96,14 @@ export class QuizEngine {
     this.emit();
   }
 
+  /** Only advances once the current question has been confirmed. */
   next(): void {
-    if (this.state.phase !== "playing") return;
+    if (this.state.phase !== "playing" || this.state.confirmedIndex === null) return;
     const nextIndex = this.state.currentIndex + 1;
     if (nextIndex >= this.state.questions.length) {
       this.state = { ...this.state, phase: "finished" };
     } else {
-      this.state = { ...this.state, currentIndex: nextIndex, selectedIndex: null };
+      this.state = { ...this.state, currentIndex: nextIndex, pendingIndex: null, confirmedIndex: null };
     }
     this.emit();
   }

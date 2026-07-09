@@ -46,9 +46,27 @@ function render(): void {
   }
 }
 
+let guard: (() => boolean) | null = null;
+
+/**
+ * Lets a view veto in-app navigation away from itself (e.g. mid-quiz progress
+ * that would otherwise be silently lost). Only intercepts calls to navigate() -
+ * i.e. taps on the bottom nav bar, which is the only way to move between views
+ * in this installed-PWA app (no visible browser back/forward chrome in
+ * standalone mode). A view must call setNavigationGuard(null) on its own
+ * cleanup so a stale guard never blocks navigation after it has unmounted.
+ */
+export function setNavigationGuard(fn: (() => boolean) | null): void {
+  guard = fn;
+}
+
 export function navigate(path: string): void {
-  if (currentPath() === path) render();
-  else location.hash = path;
+  if (currentPath() === path) {
+    render();
+    return;
+  }
+  if (guard && !guard()) return;
+  location.hash = path;
 }
 
 export function startRouter(): void {

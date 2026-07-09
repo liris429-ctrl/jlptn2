@@ -1,8 +1,10 @@
+import { setNavigationGuard } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
-import { QuizEngine, type QuizState } from "./quizEngine.ts";
+import { QuizEngine, type QuizPhase, type QuizState } from "./quizEngine.ts";
 
 const COUNT_OPTIONS = [5, 10, 20];
 const DEFAULT_COUNT = 10;
+const LEAVE_CONFIRM_MESSAGE = "測驗還沒作答完，離開後這次的作答記錄不會保留，確定要離開嗎？";
 
 export function renderQuizView(container: HTMLElement): void {
   container.innerHTML = "";
@@ -10,14 +12,28 @@ export function renderQuizView(container: HTMLElement): void {
   const page = el("div", { className: "quiz-page" });
   container.append(page);
 
+  let phase: QuizPhase = "setup";
   const unsubscribe = engine.subscribe((state) => {
+    phase = state.phase;
     page.innerHTML = "";
     if (state.phase === "setup") page.append(renderSetup(engine));
     else if (state.phase === "playing") page.append(renderPlaying(state, engine));
     else page.append(renderFinished(state, engine));
   });
 
+  // Only mid-quiz progress is worth protecting - nothing to lose yet on the
+  // setup screen, and the finished screen's result is already visible/final.
+  setNavigationGuard(() => phase !== "playing" || confirm(LEAVE_CONFIRM_MESSAGE));
+  const beforeUnload = (event: BeforeUnloadEvent): void => {
+    if (phase !== "playing") return;
+    event.preventDefault();
+    event.returnValue = "";
+  };
+  window.addEventListener("beforeunload", beforeUnload);
+
   const cleanup = (): void => {
+    setNavigationGuard(null);
+    window.removeEventListener("beforeunload", beforeUnload);
     unsubscribe();
     window.removeEventListener("hashchange", cleanup);
   };
@@ -67,17 +83,19 @@ function renderSetup(engine: QuizEngine): HTMLElement {
 
 function renderPlaying(state: QuizState, engine: QuizEngine): HTMLElement {
   const question = state.questions[state.currentIndex]!;
-  const answered = state.selectedIndex !== null;
+  const confirmed = state.confirmedIndex !== null;
 
   const optionButtons = question.options.map((option, index) => {
     const btn = el("button", { className: "quiz-option", type: "button" }, [option]);
-    if (answered) {
+    if (confirmed) {
       btn.setAttribute("disabled", "true");
       if (index === question.answer) btn.classList.add("quiz-option--correct");
-      else if (index === state.selectedIndex) btn.classList.add("quiz-option--wrong");
+      else if (index === state.confirmedIndex) btn.classList.add("quiz-option--wrong");
       else btn.classList.add("quiz-option--dim");
+    } else {
+      if (index === state.pendingIndex) btn.classList.add("quiz-option--pending");
+      btn.addEventListener("click", () => engine.pickOption(index));
     }
-    btn.addEventListener("click", () => engine.selectAnswer(index));
     return btn;
   });
 
@@ -88,7 +106,14 @@ function renderPlaying(state: QuizState, engine: QuizEngine): HTMLElement {
     el("div", { className: "quiz-options" }, optionButtons),
   ];
 
-  if (answered) {
+  if (!confirmed) {
+    // Pending pick still needs an explicit 確定 tap - grading/explanation/next
+    // only appear after that, so a stray click can't accidentally submit an answer.
+    const confirmBtn = el("button", { className: "game-restart game-restart--primary", type: "button" }, ["確定"]);
+    if (state.pendingIndex === null) confirmBtn.setAttribute("disabled", "true");
+    else confirmBtn.addEventListener("click", () => engine.confirmAnswer());
+    children.push(confirmBtn);
+  } else {
     if (question.explanation) {
       children.push(el("div", { className: "quiz-explanation" }, [question.explanation]));
     }
