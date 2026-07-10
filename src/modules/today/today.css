@@ -1,0 +1,204 @@
+.today-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.today-banner {
+  background: color-mix(in srgb, var(--ink) 6%, var(--paper-raised));
+  border-radius: var(--radius-panel);
+  padding: var(--space-3) var(--space-4);
+  color: var(--ink-soft);
+  font-size: var(--text-caption);
+}
+
+.today-greeting {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.today-greeting h1 {
+  margin: 0;
+}
+
+.today-greeting-date {
+  color: var(--ink-faint);
+  font-size: var(--text-caption);
+}
+
+.today-countdown-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--text-body);
+  color: var(--ink-soft);
+}
+
+.today-countdown-days {
+  font-family: var(--font-jp-serif);
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.today-exam-date-input {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-input);
+  background: var(--paper-raised);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-caption);
+}
+
+/* The one deliberate large-area use of --accent this page allows (see
+   tokens.css's color-semantics note + this spec's explicit carve-out for the
+   10-question main card / wrong count / selection). Everything else on this
+   page stays neutral. */
+.today-main-cta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border: none;
+  border-radius: var(--radius-panel);
+  background: var(--accent);
+  color: var(--paper-raised);
+  padding: var(--space-6) var(--space-4);
+  text-align: left;
+  box-shadow: var(--shadow-2);
+  transition: transform 0.12s ease, box-shadow 0.18s ease;
+}
+
+.today-main-cta:active {
+  transform: scale(0.99);
+}
+
+.today-main-cta-title {
+  font-family: var(--font-jp-serif);
+  font-size: var(--text-headline);
+  font-weight: 700;
+}
+
+.today-main-cta-sub {
+  font-size: var(--text-caption);
+  opacity: 0.85;
+}
+
+.today-section-title {
+  margin: 0 0 var(--space-3);
+}
+
+.today-wrong-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.today-wrong-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease,
+    background-color 0.6s ease;
+}
+
+.today-wrong-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-2);
+}
+
+.today-wrong-card--flash {
+  background: color-mix(in srgb, var(--success) 16%, var(--paper-raised));
+}
+
+.today-wrong-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.today-wrong-primary {
+  font-family: var(--font-jp-serif);
+  font-weight: 700;
+  font-size: var(--text-section);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* Wrong count is the spec's explicit carve-out for --accent outside the main
+   CTA (tokens.css's semantics note reserves accent for interactive use - this
+   page's spec calls this out by name as the one other allowed spot). */
+.today-wrong-count {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.today-wrong-reveal {
+  color: var(--ink-soft);
+  font-size: var(--text-caption);
+}
+
+.today-wrong-hint {
+  color: var(--ink-faint);
+  font-size: var(--text-tag);
+}
+
+.today-empty {
+  color: var(--ink-faint);
+  text-align: center;
+  padding: var(--space-6) 0;
+}
+
+.today-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.today-accuracy-bar {
+  display: flex;
+  gap: 2px;
+}
+
+.today-accuracy-cell {
+  flex: 1;
+  height: 20px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.today-accuracy-cell--tier1 {
+  background: color-mix(in srgb, var(--accent) 30%, var(--line));
+}
+
+.today-accuracy-cell--tier2 {
+  background: color-mix(in srgb, var(--accent) 60%, var(--line));
+}
+
+.today-accuracy-cell--tier3 {
+  background: var(--accent);
+}
+
+.today-stats-row {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--ink-soft);
+}
+
+.today-streak--fresh {
+  color: var(--accent);
+  font-weight: 600;
+}

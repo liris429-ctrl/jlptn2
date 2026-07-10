@@ -13,14 +13,19 @@ import "./modules/game/game.css";
 import { renderQuizView } from "./modules/quiz/quizView.ts";
 import "./modules/quiz/quiz.css";
 import "./modules/search/search.css";
+import { renderTodayView } from "./modules/today/todayView.ts";
+import { renderTodayQuizView } from "./modules/today/todayQuizView.ts";
+import { openDb } from "./modules/today/db.ts";
+import "./modules/today/today.css";
 import { navigate, registerRoute, startRouter } from "./router.ts";
 import { el } from "./utils/dom.ts";
 import { NAV_ICONS } from "./utils/navIcons.ts";
 import { registerServiceWorker } from "./pwa/registerSW.ts";
 
-type TabKey = "grammar" | "vocab" | "game";
+type TabKey = "today" | "grammar" | "vocab" | "game";
 
 const TAB_LABELS: Record<TabKey, string> = {
+  today: "今日",
   grammar: "文法",
   vocab: "單字",
   game: "日文練習",
@@ -61,13 +66,15 @@ async function main(): Promise<void> {
 
   const view = el("main", { className: "app-view" });
   const nav = el("nav", { className: "app-nav" });
+  const todayTab = makeNavTab(NAV_ICONS.today, "今日");
   const grammarTab = makeNavTab(NAV_ICONS.grammar, "文法");
   const vocabTab = makeNavTab(NAV_ICONS.vocab, "單字");
   const gameTab = makeNavTab(NAV_ICONS.game, "日文練習");
+  todayTab.addEventListener("click", () => navigate("/today"));
   grammarTab.addEventListener("click", () => navigate("/grammar"));
   vocabTab.addEventListener("click", () => navigate("/vocab"));
   gameTab.addEventListener("click", () => navigate("/game"));
-  nav.append(grammarTab, vocabTab, gameTab);
+  nav.append(todayTab, grammarTab, vocabTab, gameTab);
 
   const titleEl = el("h1", { className: "app-title" }, ["N2たん"]);
   const header = el("header", { className: "app-header" }, [titleEl]);
@@ -75,10 +82,11 @@ async function main(): Promise<void> {
   app.append(header, view, nav);
 
   const skeleton = renderLoadingSkeleton(view);
-  await loadStore();
+  await Promise.all([loadStore(), openDb()]);
   skeleton.remove();
 
   const setActiveTab = (tab: TabKey | null): void => {
+    todayTab.classList.toggle("nav-tab--active", tab === "today");
     grammarTab.classList.toggle("nav-tab--active", tab === "grammar");
     vocabTab.classList.toggle("nav-tab--active", tab === "vocab");
     gameTab.classList.toggle("nav-tab--active", tab === "game");
@@ -86,8 +94,16 @@ async function main(): Promise<void> {
   };
 
   registerRoute("/", () => {
-    setActiveTab("grammar");
-    renderGrammarTabView(view);
+    setActiveTab("today");
+    void renderTodayView(view);
+  });
+  registerRoute("/today", () => {
+    setActiveTab("today");
+    void renderTodayView(view);
+  });
+  registerRoute("/today/quiz", () => {
+    setActiveTab("today");
+    renderTodayQuizView(view);
   });
   registerRoute("/grammar", () => {
     setActiveTab("grammar");

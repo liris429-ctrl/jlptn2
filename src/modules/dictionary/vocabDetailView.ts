@@ -3,6 +3,7 @@ import { getStoreSync } from "../../data/store.ts";
 import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
 import { toRubyHtml } from "../../utils/furigana.ts";
+import { touchWord } from "../today/srsStore.ts";
 import { renderFavoriteToggle } from "./entryCard.ts";
 import { POS_LABEL } from "./posLabels.ts";
 
@@ -38,6 +39,10 @@ export function renderVocabDetailView(container: HTMLElement, params: Record<str
     container.append(renderNotFound());
     return;
   }
+
+  // A detail-page visit is a weak "seen this" signal for the SRS system - only
+  // seeds a schedule if this word has never been touched before.
+  void touchWord("vocab", entry.id);
 
   const backBtn = el("button", { className: "back-button", type: "button" }, ["← 返回單字"]);
   backBtn.addEventListener("click", () => navigate("/vocab"));

@@ -2,6 +2,7 @@ import type { GrammarExample } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
+import { touchWord } from "../today/srsStore.ts";
 import { renderFavoriteToggle } from "./entryCard.ts";
 import { linkedVocabChips } from "./renderLinkedSentence.ts";
 
@@ -19,6 +20,10 @@ export function renderGrammarDetailView(
     container.append(el("div", { className: "detail-page" }, [back, el("p", {}, ["找不到這個文法"])]));
     return;
   }
+
+  // A detail-page visit is a weak "seen this" signal for the SRS system - only
+  // seeds a schedule if this grammar point has never been touched before.
+  void touchWord("grammar", entry.id);
 
   const backBtn = el("button", { className: "back-button", type: "button" }, ["← 返回文法"]);
   backBtn.addEventListener("click", () => navigate("/grammar"));

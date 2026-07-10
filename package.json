@@ -21,6 +21,7 @@
   "devDependencies": {
     "@types/node": "^26.1.0",
     "@types/papaparse": "^5.5.2",
+    "fake-indexeddb": "^6.2.5",
     "opencc-js": "^1.4.0",
     "papaparse": "^5.5.4",
     "tsx": "^4.23.0",
