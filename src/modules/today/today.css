@@ -43,6 +43,15 @@
   height: 18px;
 }
 
+/* Greeting + countdown ride their own tight rhythm (gap below), separate
+   from .today-page's normal --space-6 between major sections - they read as
+   one "where am I, how much runway" unit, not two sections. */
+.today-header-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
 .today-greeting {
   display: flex;
   justify-content: space-between;
@@ -50,8 +59,12 @@
   gap: var(--space-2);
 }
 
+/* 1.25rem, not --text-headline: this is a compact page label (same size the
+   old shared app-header's title used before it was removed), not a content
+   headline like the vocab/grammar word or the quiz result title. */
 .today-greeting h1 {
   margin: 0;
+  font-size: 1.25rem;
 }
 
 .today-greeting-date {
@@ -64,7 +77,7 @@
   align-items: baseline;
   gap: var(--space-2);
   flex-wrap: wrap;
-  font-size: var(--text-body);
+  font-size: var(--text-caption);
   color: var(--ink-soft);
 }
 
@@ -303,6 +316,21 @@
   justify-content: space-between;
   align-items: baseline;
   gap: var(--space-2);
+}
+
+/* Smaller than .today-wrong-primary (--text-section) on purpose - this card
+   is a single daily read, not a list item competing for scan-attention. */
+.today-daily-grammar-pattern {
+  font-family: var(--font-jp-serif);
+  font-weight: 700;
+  font-size: var(--text-body);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.today-daily-grammar-date {
+  color: var(--ink-faint);
+  font-size: var(--text-tag);
 }
 
 .today-stats {

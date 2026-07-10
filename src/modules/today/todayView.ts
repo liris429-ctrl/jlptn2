@@ -173,7 +173,7 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
     const children: (Node | string)[] = [];
     const banner = renderBanner(data, render);
     if (banner) children.push(banner);
-    children.push(renderGreeting(data), renderCountdownRow(data, render), renderMainCta(data), renderSecondaryRow(data));
+    children.push(renderHeaderBlock(data, render), renderMainCta(data), renderSecondaryRow(data));
     children.push(
       renderRecentWrongSection(data, {
         getExpandedKey: () => expandedKey,
@@ -242,6 +242,13 @@ async function downloadBackup(): Promise<void> {
   const link = el("a", { href: url, download: `n2tan-backup-${getStudyDate()}.json` });
   link.click();
   URL.revokeObjectURL(url);
+}
+
+/** Greeting + countdown share one tight-spaced block (see .today-header-block)
+ * instead of riding the page's normal --space-6 section rhythm - they read as
+ * one "where am I, how much runway is left" unit, not two separate sections. */
+function renderHeaderBlock(data: TodayData, onChange: () => void): HTMLElement {
+  return el("div", { className: "today-header-block" }, [renderGreeting(data), renderCountdownRow(data, onChange)]);
 }
 
 function renderGreeting(data: TodayData): HTMLElement {
@@ -412,8 +419,8 @@ function renderDailyGrammarSection(data: TodayData): HTMLElement | null {
 
   const card = el("div", { className: "today-daily-grammar-card", role: "button", tabindex: "0" }, [
     el("div", { className: "today-daily-grammar-head" }, [
-      el("span", { className: "today-wrong-primary" }, [entry.pattern]),
-      el("span", { className: "today-greeting-date" }, [formatShortDate(data.today)]),
+      el("span", { className: "today-daily-grammar-pattern" }, [entry.pattern]),
+      el("span", { className: "today-daily-grammar-date" }, [formatShortDate(data.today)]),
     ]),
     el("p", { className: "today-wrong-reveal" }, [entry.meaning]),
   ]);
