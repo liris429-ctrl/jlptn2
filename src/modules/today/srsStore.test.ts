@@ -34,6 +34,7 @@ const {
   getWeakCount,
   getNewCount,
   getRecentWrongEntries,
+  recentWrongCount,
   getYesterdayNewWords,
   getStreak,
   getWeekSummary,
@@ -188,6 +189,48 @@ describe("getRecentWrongEntries", () => {
     const entries = await getRecentWrongEntries(5);
     expect(entries).toHaveLength(0);
     vi.restoreAllMocks();
+  });
+
+  it("excludes a word once its only recent-window wrong has been pushed out of `recent` by later correct answers", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 1, 12, 0));
+    await recordAnswer("vocab", "v-0", false, "quiz"); // lastWrongAt = 7/1
+    for (let i = 0; i < 10; i++) {
+      await recordAnswer("vocab", "v-0", true, "quiz"); // evicts the wrong event from `recent` (10-item cap)
+    }
+    // lastWrongAt (7/1) is still within the 7-day window as of "now" (7/2),
+    // but the wrong event itself no longer exists in `recent` - eligibility
+    // must follow the live recentWrongCount, not the now-stale lastWrongAt.
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 2, 12, 0));
+    const entries = await getRecentWrongEntries(5);
+    expect(entries.map((e) => e.id)).not.toContain("v-0");
+    vi.restoreAllMocks();
+  });
+});
+
+describe("recentWrongCount", () => {
+  it("only counts wrong events whose own timestamp falls within the window, ignoring lastWrongAt", () => {
+    const now = localTs(2026, 7, 10, 12, 0);
+    const eightDaysAgo = now - 8 * 24 * 60 * 60 * 1000;
+    const w = {
+      key: "vocab:v-0",
+      kind: "vocab" as const,
+      id: "v-0",
+      seen: 2,
+      correct: 0,
+      recent: [
+        { r: 0 as const, t: "quiz" as const, ts: eightDaysAgo },
+        { r: 0 as const, t: "quiz" as const, ts: now },
+      ],
+      mastery: 0,
+      srsDue: null,
+      srsInterval: 0,
+      lastReviewed: null,
+      lastWrongAt: now,
+      firstSeenAt: eightDaysAgo,
+      fav: false,
+      note: "",
+    };
+    expect(recentWrongCount(w, now)).toBe(1);
   });
 });
 

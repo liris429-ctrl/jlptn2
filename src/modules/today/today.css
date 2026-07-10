@@ -219,8 +219,7 @@
   padding: var(--space-3) var(--space-4);
   cursor: pointer;
   touch-action: manipulation;
-  transition: box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease,
-    background-color 0.6s ease;
+  transition: box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
 }
 
 .today-wrong-card:hover {
@@ -228,8 +227,27 @@
   box-shadow: var(--shadow-2);
 }
 
-.today-wrong-card--flash {
-  background: color-mix(in srgb, var(--success) 16%, var(--paper-raised));
+/* Takes a dismissed card's place for TOAST_DURATION_MS (todayView.ts), then
+   the card is dropped from the list entirely - flat/no-shadow like the
+   page's other non-interactive info family, since this is transient
+   feedback, not something to click. */
+@keyframes today-wrong-toast-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.today-wrong-toast {
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--success) 12%, var(--paper-raised));
+  padding: var(--space-3) var(--space-4);
+  color: var(--ink-soft);
+  font-size: var(--text-caption);
+  animation: today-wrong-toast-fade 1.5s ease forwards;
 }
 
 .today-wrong-head {

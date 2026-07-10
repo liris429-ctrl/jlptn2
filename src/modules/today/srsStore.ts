@@ -239,13 +239,38 @@ export async function getWeakCount(): Promise<number> {
   return (await getWeakWords()).length;
 }
 
-/** lastWrongAt within the last 7 days, ranked by wrong-count desc then recency desc. */
+/**
+ * How many of this word's answers were wrong within the last 7 days, counted
+ * straight from `recent` (which holds ts per event) - the single source of
+ * truth for both "does this word make the recent-wrong list" and "what
+ * number does its ×N badge show" (todayView.ts), so the two can never drift
+ * out of sync with each other again.
+ */
+export function recentWrongCount(w: WordState, now: number = Date.now()): number {
+  return w.recent.filter((e) => e.r === 0 && now - e.ts <= RECENT_WRONG_WINDOW_MS).length;
+}
+
+/**
+ * Ranked by recentWrongCount desc then lastWrongAt desc. Eligibility is
+ * recentWrongCount(w) >= 1, not just "lastWrongAt is within 7 days" - a word
+ * whose only recent-window wrong got pushed out of `recent` by 10+ later
+ * correct answers has a stale-but-in-window lastWrongAt and must NOT still
+ * count as "recently wrong". The lastWrongAt index range query below is only
+ * a safe pre-filter to avoid a full-table scan (lastWrongAt, the timestamp
+ * of the single most recent wrong ever, is always >= any recentWrongCount-
+ * qualifying event's timestamp - so it can never exclude a true positive,
+ * only include some now-stale rows that get filtered out next).
+ */
 export async function getRecentWrongEntries(limit = 5): Promise<WordState[]> {
-  const range = IDBKeyRange.lowerBound(Date.now() - RECENT_WRONG_WINDOW_MS);
-  const rows = await dbGetAllByIndexRange<WordState>(STORE_WORD_STATE, "lastWrongAt", range);
-  const wrongCount = (w: WordState): number => w.recent.filter((e) => e.r === 0).length;
-  rows.sort((a, b) => wrongCount(b) - wrongCount(a) || (b.lastWrongAt ?? 0) - (a.lastWrongAt ?? 0));
-  return rows.slice(0, limit);
+  const now = Date.now();
+  const range = IDBKeyRange.lowerBound(now - RECENT_WRONG_WINDOW_MS);
+  const candidates = await dbGetAllByIndexRange<WordState>(STORE_WORD_STATE, "lastWrongAt", range);
+  return candidates
+    .map((w) => ({ w, count: recentWrongCount(w, now) }))
+    .filter(({ count }) => count >= 1)
+    .sort((a, b) => b.count - a.count || (b.w.lastWrongAt ?? 0) - (a.w.lastWrongAt ?? 0))
+    .slice(0, limit)
+    .map(({ w }) => w);
 }
 
 /** dailyStats' keyPath (`date`) is itself the sortable range key - no extra index needed. */

@@ -16,6 +16,7 @@ import {
   getWeakCount,
   getWeekSummary,
   getYesterdayNewWords,
+  recentWrongCount,
   recordAnswer,
   setMeta,
   subscribeSrs,
@@ -161,7 +162,16 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
   // accordion's expanded card survives the full-page rebuild that a
   // subscribeSrs emit triggers - see renderRecentWrongSection.
   let expandedKey: string | null = null;
-  let justConfirmedKey: string | null = null;
+
+  // "想起來了" dismissal is session-only UI state, never written to
+  // IndexedDB (recordAnswer already durably records the "remembered" event
+  // via lastWrongAt/mastery - this Set is purely about what the *list*
+  // shows right now). It resets whenever this view is (re)mounted, so a
+  // word still inside the 7-day window legitimately reappears next time the
+  // page is opened - that's "tomorrow is a fresh batch", not a bug.
+  const dismissedThisSession = new Set<string>();
+  const activeToastKeys = new Set<string>();
+  const toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   let renderToken = 0;
   const render = async (): Promise<void> => {
@@ -181,11 +191,24 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
           expandedKey = key;
           void render();
         },
-        // Read-only here - every card in this pass must see the same value.
-        // Cleared once below, after the whole pass has rendered, not per-card.
-        getJustConfirmedKey: () => justConfirmedKey,
-        markConfirmed: (key) => {
-          justConfirmedKey = key;
+        isDismissed: (key) => dismissedThisSession.has(key),
+        isToastActive: (key) => activeToastKeys.has(key),
+        dismiss: (w) => {
+          dismissedThisSession.add(w.key);
+          activeToastKeys.add(w.key);
+          void recordAnswer(w.kind as FavoriteKind, w.id, true, "anki");
+          void render();
+
+          const existingTimer = toastTimers.get(w.key);
+          if (existingTimer != null) clearTimeout(existingTimer);
+          toastTimers.set(
+            w.key,
+            setTimeout(() => {
+              activeToastKeys.delete(w.key);
+              toastTimers.delete(w.key);
+              void render();
+            }, TOAST_DURATION_MS),
+          );
         },
       }),
     );
@@ -193,7 +216,6 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
     if (dailyGrammar) children.push(dailyGrammar);
     children.push(renderStatsSection(data));
     page.append(...children);
-    justConfirmedKey = null;
   };
 
   const unsubscribe = subscribeSrs(() => {
@@ -203,6 +225,7 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
     "hashchange",
     () => {
       unsubscribe();
+      for (const timer of toastTimers.values()) clearTimeout(timer);
     },
     { once: true },
   );
@@ -328,11 +351,14 @@ function renderSecondaryRow(data: TodayData): HTMLElement {
   return el("div", { className: "today-secondary-row" }, cards);
 }
 
+const TOAST_DURATION_MS = 1500;
+
 interface WrongCardHandle {
   getExpandedKey(): string | null;
   setExpandedKey(key: string | null): void;
-  getJustConfirmedKey(): string | null;
-  markConfirmed(key: string): void;
+  isDismissed(key: string): boolean;
+  isToastActive(key: string): boolean;
+  dismiss(w: WordState): void;
 }
 
 function renderRecentWrongSection(data: TodayData, handle: WrongCardHandle): HTMLElement {
@@ -340,22 +366,26 @@ function renderRecentWrongSection(data: TodayData, handle: WrongCardHandle): HTM
   if (data.recentWrong.length === 0) {
     return el("section", {}, [title, el("p", { className: "today-empty" }, ["最近沒有錯題，保持下去！"])]);
   }
-  const list = el(
-    "div",
-    { className: "today-wrong-list" },
-    data.recentWrong.map((w) => renderWrongCard(w, handle)),
-  );
+  const items = data.recentWrong
+    .map((w) => {
+      if (!handle.isDismissed(w.key)) return renderWrongCard(w, handle);
+      // Dismissed this session - shown once more as a fading confirmation,
+      // then dropped from the list entirely (still filtered out here on the
+      // next render once its timer clears isToastActive).
+      return handle.isToastActive(w.key) ? renderDismissToast() : null;
+    })
+    .filter((item): item is HTMLElement => item !== null);
+  const list = el("div", { className: "today-wrong-list" }, items);
   return el("section", {}, [title, list]);
 }
 
-function wrongCount(w: WordState): number {
-  return w.recent.filter((e) => e.r === 0).length;
+function renderDismissToast(): HTMLElement {
+  return el("div", { className: "today-wrong-toast" }, ["已記錄，但記住前可能再出現"]);
 }
 
 function renderWrongCard(w: WordState, handle: WrongCardHandle): HTMLElement {
   const store = getStoreSync();
   const expanded = handle.getExpandedKey() === w.key;
-  const justConfirmed = handle.getJustConfirmedKey() === w.key;
 
   const kindLabel = w.kind === "vocab" ? "單字" : "文法";
   let primaryText = "";
@@ -377,20 +407,16 @@ function renderWrongCard(w: WordState, handle: WrongCardHandle): HTMLElement {
   const head = el("div", { className: "today-wrong-head" }, [
     el("span", { className: "result-kind" }, [kindLabel]),
     el("span", { className: "today-wrong-primary" }, [primaryText]),
-    el("span", { className: "today-wrong-count" }, [`×${wrongCount(w)}`]),
+    el("span", { className: "today-wrong-count" }, [`×${recentWrongCount(w)}`]),
   ]);
 
-  const card = el("div", { className: `today-wrong-card${justConfirmed ? " today-wrong-card--flash" : ""}` }, [
-    head,
-  ]);
+  const card = el("div", { className: "today-wrong-card" }, [head]);
 
   if (expanded) {
     const rememberBtn = el("button", { className: "today-wrong-remember", type: "button" }, ["想起來了"]);
-    if (justConfirmed) rememberBtn.setAttribute("disabled", "true");
     rememberBtn.addEventListener("click", (event) => {
       event.stopPropagation();
-      handle.markConfirmed(w.key);
-      void recordAnswer(w.kind as FavoriteKind, w.id, true, "anki");
+      handle.dismiss(w);
     });
     const revealRow = el("div", { className: "today-wrong-reveal-row" }, [
       el("p", { className: "today-wrong-reveal" }, [revealText]),
