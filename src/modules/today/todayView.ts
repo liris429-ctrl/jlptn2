@@ -4,7 +4,6 @@ import { el } from "../../utils/dom.ts";
 import type { FavoriteKind } from "../favorites/favoritesStore.ts";
 import {
   daysUntil,
-  exportAllData,
   getDailyGrammarPick,
   getDailyStatsRange,
   getDueCount,
@@ -26,7 +25,6 @@ import {
 
 const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
 const ACCURACY_BAR_DAYS = 21;
-const BACKUP_REMINDER_DAYS = 30;
 
 type PhaseKey = "explore" | "review" | "sprint";
 
@@ -63,12 +61,11 @@ interface TodayData {
   streak: number;
   week: WeekSummary;
   streakBroken: boolean;
-  daysSinceBackup: number | null;
 }
 
 async function loadTodayData(): Promise<TodayData> {
   const today = getStudyDate();
-  const [examDate, dueCount, weakCount, newCount, recentWrong, statsRange, streak, week, yesterdayNew, dailyGrammarId, lastBackup] =
+  const [examDate, dueCount, weakCount, newCount, recentWrong, statsRange, streak, week, yesterdayNew, dailyGrammarId] =
     await Promise.all([
       getMeta<string>("examDate"),
       getDueCount(),
@@ -80,7 +77,6 @@ async function loadTodayData(): Promise<TodayData> {
       getWeekSummary(),
       getYesterdayNewWords(),
       getDailyGrammarPick(today),
-      getMeta<number>("lastBackup"),
     ]);
 
   const statsByDate = new Map(statsRange.map((s) => [s.date, s]));
@@ -95,7 +91,6 @@ async function loadTodayData(): Promise<TodayData> {
   const streakBroken = (yesterday?.answered ?? 0) === 0 && (dayBefore?.answered ?? 0) > 0;
 
   const days = examDate ? daysUntil(examDate, today) : null;
-  const daysSinceBackup = lastBackup == null ? null : Math.floor((Date.now() - lastBackup) / 86400000);
 
   return {
     today,
@@ -112,7 +107,6 @@ async function loadTodayData(): Promise<TodayData> {
     streak,
     week,
     streakBroken,
-    daysSinceBackup,
   };
 }
 
@@ -148,7 +142,7 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
 
     page.innerHTML = "";
     const children: (Node | string)[] = [];
-    const banner = renderBanner(data, render);
+    const banner = renderBanner(data);
     if (banner) children.push(banner);
     children.push(
       renderGreeting(data),
@@ -193,33 +187,15 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
   await render();
 }
 
-/** At most one banner at a time, backup reminder takes priority over the
- * streak-break notice (matches the spec's top-to-bottom priority order). */
-function renderBanner(data: TodayData, onChange: () => void): HTMLElement | null {
-  if (data.daysSinceBackup == null || data.daysSinceBackup > BACKUP_REMINDER_DAYS) {
-    const backupBtn = el("button", { className: "today-banner-action", type: "button" }, ["備份"]);
-    backupBtn.addEventListener("click", () => {
-      void downloadBackup().then(() => setMeta("lastBackup", Date.now())).then(onChange);
-    });
-    const text =
-      data.daysSinceBackup == null
-        ? "還沒有備份過學習進度。"
-        : `已 ${data.daysSinceBackup} 天未備份學習進度。`;
-    return el("div", { className: "today-banner" }, [el("span", {}, [text]), backupBtn]);
-  }
+/** Backup reminder banner removed from the home page for now (the feature is
+ * export-only with no restore flow yet - see srsStore.ts's exportAllData,
+ * still there for whenever it resurfaces, just not wired to this page). Only
+ * the streak-break condition is shown here. */
+function renderBanner(data: TodayData): HTMLElement | null {
   if (data.streakBroken) {
     return el("p", { className: "today-banner" }, ["連續紀錄中斷了，今天重新開始。"]);
   }
   return null;
-}
-
-async function downloadBackup(): Promise<void> {
-  const backup = await exportAllData();
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = el("a", { href: url, download: `n2tan-backup-${getStudyDate()}.json` });
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 function renderGreeting(data: TodayData): HTMLElement {
