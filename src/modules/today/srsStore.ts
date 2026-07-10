@@ -391,7 +391,12 @@ export async function getNewCount(learnedUpTo?: number): Promise<number> {
 /**
  * Draws up to `counts.review`/`counts.weak`/`counts.new` candidates from three
  * disjoint pools (a word picked for one pool is excluded from the others, so
- * the same word never appears twice - "同一詞不會重複").
+ * the same word never appears twice - "同一詞不會重複"). If a pool comes up
+ * short of its own target, the shortfall is topped up from the other pools'
+ * leftover (unpicked) candidates, tried in review -> weak -> new priority
+ * order (spec 3.1's "缺額依複習→弱點→新詞順序遞補") - so the round still
+ * reaches the full requested total whenever enough words exist *somewhere*,
+ * not just in whichever pool happened to be data-poor this phase.
  */
 export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): Promise<DrawnPools> {
   const usedKeys = new Set<string>();
@@ -409,6 +414,29 @@ export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): P
     (c) => !usedKeys.has(makeKey(c.kind, c.id)),
   );
   const newPicks = sample(newCandidates, Math.min(counts.new, newCandidates.length));
+  for (const w of newPicks) usedKeys.add(makeKey(w.kind, w.id));
+
+  let shortfall = counts.review + counts.weak + counts.new - (reviewPicks.length + weakPicks.length + newPicks.length);
+
+  if (shortfall > 0) {
+    const leftover = dueWords.filter((w) => !usedKeys.has(w.key));
+    const topUp = sample(leftover, Math.min(shortfall, leftover.length));
+    for (const w of topUp) usedKeys.add(w.key);
+    reviewPicks.push(...topUp);
+    shortfall -= topUp.length;
+  }
+  if (shortfall > 0) {
+    const leftover = weakCandidates.filter((w) => !usedKeys.has(w.key));
+    const topUp = sample(leftover, Math.min(shortfall, leftover.length));
+    for (const w of topUp) usedKeys.add(w.key);
+    weakPicks.push(...topUp);
+    shortfall -= topUp.length;
+  }
+  if (shortfall > 0) {
+    const leftover = newCandidates.filter((c) => !usedKeys.has(makeKey(c.kind, c.id)));
+    const topUp = sample(leftover, Math.min(shortfall, leftover.length));
+    newPicks.push(...topUp);
+  }
 
   return {
     review: reviewPicks.map((w) => ({ kind: w.kind, id: w.id })),

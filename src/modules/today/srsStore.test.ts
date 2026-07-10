@@ -261,6 +261,21 @@ describe("drawTodayPool", () => {
       expect(["g-0", "g-1"]).toContain(id);
     }
   });
+
+  it("tops up a shortfall from other pools (review -> weak -> new) instead of returning fewer than requested", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 1, 12, 0));
+    // Only v-0 is due today; nothing is weak. review asks for 3 but only 1
+    // exists - the other 2 should be topped up from the new-word pool
+    // (there's no weak candidate at all here, so weak's leftover is empty).
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 2, 12, 0));
+
+    const pools = await drawTodayPool({ review: 3, weak: 0, new: 0 });
+    const allIds = [...pools.review, ...pools.weak, ...pools.new].map((w) => `${w.kind}:${w.id}`);
+    expect(new Set(allIds).size).toBe(allIds.length); // still no duplicates
+    expect(allIds.length).toBe(3); // shortfall filled from the new pool, not left at 1
+    vi.restoreAllMocks();
+  });
 });
 
 describe("meta", () => {
