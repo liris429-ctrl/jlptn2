@@ -306,7 +306,7 @@
   border-radius: var(--radius-pill);
   background: var(--paper-raised);
   padding: var(--space-1) var(--space-2);
-  font-size: 0.75rem;
+  font-size: var(--text-tag);
   color: var(--ink-soft);
 }
 
@@ -321,6 +321,6 @@
 }
 
 .occlude-status {
-  font-size: 0.75rem;
+  font-size: var(--text-tag);
   color: var(--ink-faint);
 }
