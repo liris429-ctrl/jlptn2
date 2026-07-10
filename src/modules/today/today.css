@@ -5,17 +5,45 @@
 }
 
 .today-banner {
-  background: color-mix(in srgb, var(--ink) 6%, var(--paper-raised));
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: color-mix(in srgb, var(--accent) 12%, var(--paper-raised));
   border-radius: var(--radius-panel);
   padding: var(--space-3) var(--space-4);
-  color: var(--ink-soft);
+  color: var(--accent-ink);
   font-size: var(--text-caption);
+}
+
+.today-banner-text {
+  flex: 1;
+}
+
+.today-banner-action {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: var(--text-caption);
+}
+
+.today-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.today-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .today-greeting {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
 }
 
 .today-greeting h1 {
@@ -57,13 +85,14 @@
    page stays neutral. */
 .today-main-cta {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   border: none;
   border-radius: var(--radius-panel);
   background: var(--accent);
   color: var(--paper-raised);
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-5) var(--space-4);
   text-align: left;
   box-shadow: var(--shadow-2);
   transition: transform 0.12s ease, box-shadow 0.18s ease;
@@ -71,6 +100,13 @@
 
 .today-main-cta:active {
   transform: scale(0.99);
+}
+
+.today-main-cta-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
 }
 
 .today-main-cta-title {
@@ -84,28 +120,36 @@
   opacity: 0.85;
 }
 
+/* Decorative, not a nested interactive control - the whole card is already
+   the click target (see .today-main-cta), same pattern as .hub-row-chevron. */
+.today-main-cta-start {
+  flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  background: var(--paper-raised);
+  color: var(--accent-ink);
+  font-weight: 700;
+  padding: var(--space-2) var(--space-5);
+}
+
 .today-section-title {
-  margin: 0 0 var(--space-1);
-}
-
-.today-section-hint {
-  color: var(--ink-faint);
-  font-size: var(--text-tag);
-  letter-spacing: 0.04em;
   margin: 0 0 var(--space-3);
+  color: var(--ink-faint);
+  font-size: var(--text-caption);
+  font-weight: 400;
 }
 
-/* Milestone 3's 昨夜複習 entry point - a lone secondary card, deliberately
-   plain (border only, no accent) so it doesn't compete with the main CTA. */
+/* Milestone 3's 昨夜複習 + the plain 連連看 shortcut - equal-width when both
+   are present, a single full-width card when 昨夜複習 isn't shown yet. */
 .today-secondary-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: var(--space-2);
 }
 
 .today-secondary-card {
-  flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: var(--space-2);
   text-align: left;
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
@@ -117,6 +161,13 @@
 .today-secondary-card:hover {
   border-color: var(--line-strong);
   box-shadow: var(--shadow-1);
+}
+
+.today-secondary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .today-secondary-title {

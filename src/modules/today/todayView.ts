@@ -4,6 +4,7 @@ import { el } from "../../utils/dom.ts";
 import type { FavoriteKind } from "../favorites/favoritesStore.ts";
 import {
   daysUntil,
+  exportAllData,
   getDailyGrammarPick,
   getDailyStatsRange,
   getDueCount,
@@ -22,9 +23,11 @@ import {
   type WeekSummary,
   type WordState,
 } from "./srsStore.ts";
+import { TODAY_ICONS } from "./todayIcons.ts";
 
 const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
 const ACCURACY_BAR_DAYS = 21;
+const BACKUP_REMINDER_DAYS = 30;
 
 type PhaseKey = "explore" | "review" | "sprint";
 
@@ -34,7 +37,7 @@ interface PhaseInfo {
 }
 
 const PHASES: Record<PhaseKey, PhaseInfo> = {
-  explore: { label: "探索期，以新內容為主", poolCounts: { review: 5, weak: 2, new: 3 } },
+  explore: { label: "打底期，以新內容為主", poolCounts: { review: 5, weak: 2, new: 3 } },
   review: { label: "總複習期，弱點加強", poolCounts: { review: 5, weak: 4, new: 1 } },
   sprint: { label: "衝刺期，只做弱點", poolCounts: { review: 4, weak: 6, new: 0 } },
 };
@@ -61,23 +64,36 @@ interface TodayData {
   streak: number;
   week: WeekSummary;
   streakBroken: boolean;
+  daysSinceBackup: number | null;
 }
 
 async function loadTodayData(): Promise<TodayData> {
   const today = getStudyDate();
-  const [examDate, dueCount, weakCount, newCount, recentWrong, statsRange, streak, week, yesterdayNew, dailyGrammarId] =
-    await Promise.all([
-      getMeta<string>("examDate"),
-      getDueCount(),
-      getWeakCount(),
-      getNewCount(),
-      getRecentWrongEntries(5),
-      getDailyStatsRange(ACCURACY_BAR_DAYS),
-      getStreak(),
-      getWeekSummary(),
-      getYesterdayNewWords(),
-      getDailyGrammarPick(today),
-    ]);
+  const [
+    examDate,
+    dueCount,
+    weakCount,
+    newCount,
+    recentWrong,
+    statsRange,
+    streak,
+    week,
+    yesterdayNew,
+    dailyGrammarId,
+    lastBackup,
+  ] = await Promise.all([
+    getMeta<string>("examDate"),
+    getDueCount(),
+    getWeakCount(),
+    getNewCount(),
+    getRecentWrongEntries(5),
+    getDailyStatsRange(ACCURACY_BAR_DAYS),
+    getStreak(),
+    getWeekSummary(),
+    getYesterdayNewWords(),
+    getDailyGrammarPick(today),
+    getMeta<number>("lastBackup"),
+  ]);
 
   const statsByDate = new Map(statsRange.map((s) => [s.date, s]));
   const accuracyDays: { date: string; stats: DailyStats | undefined }[] = [];
@@ -91,6 +107,7 @@ async function loadTodayData(): Promise<TodayData> {
   const streakBroken = (yesterday?.answered ?? 0) === 0 && (dayBefore?.answered ?? 0) > 0;
 
   const days = examDate ? daysUntil(examDate, today) : null;
+  const daysSinceBackup = lastBackup == null ? null : Math.floor((Date.now() - lastBackup) / 86400000);
 
   return {
     today,
@@ -107,6 +124,7 @@ async function loadTodayData(): Promise<TodayData> {
     streak,
     week,
     streakBroken,
+    daysSinceBackup,
   };
 }
 
@@ -121,6 +139,17 @@ function formatGreetingDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number) as [number, number, number];
   const date = new Date(y, m - 1, d);
   return `${m}月${d}日(${WEEKDAY_LABELS[date.getDay()]})`;
+}
+
+function formatShortDate(dateStr: string): string {
+  const [, m, d] = dateStr.split("-").map(Number) as [number, number, number];
+  return `${m}/${d}`;
+}
+
+function icon(svg: string): HTMLElement {
+  const span = el("span", { className: "today-icon", "aria-hidden": "true" });
+  span.innerHTML = svg;
+  return span;
 }
 
 export async function renderTodayView(container: HTMLElement): Promise<void> {
@@ -142,15 +171,9 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
 
     page.innerHTML = "";
     const children: (Node | string)[] = [];
-    const banner = renderBanner(data);
+    const banner = renderBanner(data, render);
     if (banner) children.push(banner);
-    children.push(
-      renderGreeting(data),
-      renderCountdownRow(data, render),
-      renderMainCta(data),
-    );
-    const secondary = renderSecondaryRow(data);
-    if (secondary) children.push(secondary);
+    children.push(renderGreeting(data), renderCountdownRow(data, render), renderMainCta(data), renderSecondaryRow(data));
     children.push(
       renderRecentWrongSection(data, {
         getExpandedKey: () => expandedKey,
@@ -187,15 +210,38 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
   await render();
 }
 
-/** Backup reminder banner removed from the home page for now (the feature is
- * export-only with no restore flow yet - see srsStore.ts's exportAllData,
- * still there for whenever it resurfaces, just not wired to this page). Only
- * the streak-break condition is shown here. */
-function renderBanner(data: TodayData): HTMLElement | null {
+/** At most one banner at a time, backup reminder takes priority over the
+ * streak-break notice. The feature is export-only (no restore flow yet) -
+ * see srsStore.ts's exportAllData. */
+function renderBanner(data: TodayData, onChange: () => void): HTMLElement | null {
+  if (data.daysSinceBackup == null || data.daysSinceBackup > BACKUP_REMINDER_DAYS) {
+    const backupBtn = el("button", { className: "today-banner-action", type: "button" }, ["備份"]);
+    backupBtn.addEventListener("click", () => {
+      void downloadBackup()
+        .then(() => setMeta("lastBackup", Date.now()))
+        .then(onChange);
+    });
+    const text =
+      data.daysSinceBackup == null ? "還沒有備份過學習紀錄。" : `已 ${data.daysSinceBackup} 天未備份學習紀錄`;
+    return el("div", { className: "today-banner" }, [
+      icon(TODAY_ICONS.cloudUpload),
+      el("span", { className: "today-banner-text" }, [text]),
+      backupBtn,
+    ]);
+  }
   if (data.streakBroken) {
     return el("p", { className: "today-banner" }, ["連續紀錄中斷了，今天重新開始。"]);
   }
   return null;
+}
+
+async function downloadBackup(): Promise<void> {
+  const backup = await exportAllData();
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = el("a", { href: url, download: `n2tan-backup-${getStudyDate()}.json` });
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function renderGreeting(data: TodayData): HTMLElement {
@@ -225,35 +271,54 @@ function renderCountdownRow(data: TodayData, onChange: () => void): HTMLElement 
   }
 
   return el("div", { className: "today-countdown-row" }, [
-    el("span", {}, [
-      "N2 まで ",
-      el("span", { className: "today-countdown-days" }, [`D-${data.days}`]),
-    ]),
+    el("span", {}, ["N2 まで ", el("span", { className: "today-countdown-days" }, [`D-${data.days}`])]),
     el("span", {}, [`・${data.phase.label}`]),
   ]);
 }
 
 function renderMainCta(data: TodayData): HTMLElement {
   const btn = el("button", { className: "today-main-cta", type: "button" }, [
-    el("span", { className: "today-main-cta-title" }, ["今日の10問"]),
-    el("span", { className: "today-main-cta-sub" }, [
-      `待複習 ${data.dueCount}・弱點 ${data.weakCount}・新詞 ${data.newCount}`,
+    el("div", { className: "today-main-cta-text" }, [
+      el("span", { className: "today-main-cta-title" }, ["今日の10問"]),
+      el("span", { className: "today-main-cta-sub" }, [
+        `待複習 ${data.dueCount}・弱點 ${data.weakCount}・新詞 ${data.newCount}`,
+      ]),
     ]),
+    el("span", { className: "today-main-cta-start" }, ["開始"]),
   ]);
   btn.addEventListener("click", () => navigate("/today/quiz"));
   return btn;
 }
 
-/** Milestone 3's 昨夜複習入口 - only shown when yesterday actually introduced
- * new (genuinely tested) words. */
-function renderSecondaryRow(data: TodayData): HTMLElement | null {
-  if (data.yesterdayNewCount === 0) return null;
-  const card = el("button", { className: "today-secondary-card", type: "button" }, [
-    el("span", { className: "today-secondary-title" }, ["昨夜複習"]),
-    el("span", { className: "today-secondary-sub" }, [`昨天的 ${data.yesterdayNewCount} 個新詞`]),
+/** Two static/conditional shortcut cards: 昨夜複習 (milestone 3's entry point,
+ * only when yesterday introduced genuinely-tested new words) and 今日の挑戰
+ * (a plain shortcut into 連連看 - no completion tracking, since that would
+ * require wiring the unrelated game engine into recordAnswer). */
+function renderSecondaryRow(data: TodayData): HTMLElement {
+  const cards: HTMLElement[] = [];
+  if (data.yesterdayNewCount > 0) {
+    const card = el("button", { className: "today-secondary-card", type: "button" }, [
+      icon(TODAY_ICONS.history),
+      el("span", { className: "today-secondary-text" }, [
+        el("span", { className: "today-secondary-title" }, ["昨夜複習"]),
+        el("span", { className: "today-secondary-sub" }, [`昨天的 ${data.yesterdayNewCount} 個新詞`]),
+      ]),
+    ]);
+    card.addEventListener("click", () => navigate("/today/quiz/yesterday"));
+    cards.push(card);
+  }
+
+  const challengeCard = el("button", { className: "today-secondary-card", type: "button" }, [
+    icon(TODAY_ICONS.target),
+    el("span", { className: "today-secondary-text" }, [
+      el("span", { className: "today-secondary-title" }, ["今日の挑戰"]),
+      el("span", { className: "today-secondary-sub" }, ["連連看"]),
+    ]),
   ]);
-  card.addEventListener("click", () => navigate("/today/quiz/yesterday"));
-  return el("div", { className: "today-secondary-row" }, [card]);
+  challengeCard.addEventListener("click", () => navigate("/game/match"));
+  cards.push(challengeCard);
+
+  return el("div", { className: "today-secondary-row" }, cards);
 }
 
 interface WrongCardHandle {
@@ -264,8 +329,7 @@ interface WrongCardHandle {
 }
 
 function renderRecentWrongSection(data: TodayData, handle: WrongCardHandle): HTMLElement {
-  const title = el("h2", { className: "today-section-title" }, ["最近錯題"]);
-  const hint = el("p", { className: "today-section-hint" }, ["點一下自我檢測"]);
+  const title = el("p", { className: "today-section-title" }, ["最近錯詞・點一下自我檢查"]);
   if (data.recentWrong.length === 0) {
     return el("section", {}, [title, el("p", { className: "today-empty" }, ["最近沒有錯題，保持下去！"])]);
   }
@@ -274,7 +338,7 @@ function renderRecentWrongSection(data: TodayData, handle: WrongCardHandle): HTM
     { className: "today-wrong-list" },
     data.recentWrong.map((w) => renderWrongCard(w, handle)),
   );
-  return el("section", {}, [title, hint, list]);
+  return el("section", {}, [title, list]);
 }
 
 function wrongCount(w: WordState): number {
@@ -349,7 +413,7 @@ function renderDailyGrammarSection(data: TodayData): HTMLElement | null {
   const card = el("div", { className: "today-daily-grammar-card", role: "button", tabindex: "0" }, [
     el("div", { className: "today-daily-grammar-head" }, [
       el("span", { className: "today-wrong-primary" }, [entry.pattern]),
-      el("span", { className: "today-greeting-date" }, [formatGreetingDate(data.today)]),
+      el("span", { className: "today-greeting-date" }, [formatShortDate(data.today)]),
     ]),
     el("p", { className: "today-wrong-reveal" }, [entry.meaning]),
   ]);
@@ -383,14 +447,16 @@ function renderStatsSection(data: TodayData): HTMLElement {
   const streakText = data.streak > 0 ? `學習紀錄・連續 ${data.streak} 天 🔥` : "學習紀錄・尚未開始連續紀錄";
   const streakEl = el("span", { className: data.streak > 0 ? "today-streak--fresh" : "" }, [streakText]);
 
-  const weekParts: string[] = [`本週 ${data.week.totalAnswered} 題`];
-  if (data.week.accuracyPct != null) weekParts.push(`${data.week.accuracyPct}%`);
+  const weekPrefix = [`本週 ${data.week.totalAnswered} 題`];
+  if (data.week.accuracyPct != null) weekPrefix.push(`${data.week.accuracyPct}%`);
+  const weekChildren: (Node | string)[] = [`${weekPrefix.join("・")}`];
   if (data.week.weakerCategory != null) {
-    weekParts.push(data.week.weakerCategory === "grammar" ? "文法較弱" : "單字較弱");
+    const weakLabel = data.week.weakerCategory === "grammar" ? "文法偏弱" : "單字偏弱";
+    weekChildren.push("・", el("span", { className: "today-streak--fresh" }, [weakLabel]));
   }
 
   return el("section", { className: "today-stats" }, [
-    el("div", { className: "today-stats-row" }, [streakEl, el("span", {}, [weekParts.join("・")])]),
+    el("div", { className: "today-stats-row" }, [streakEl, el("span", {}, weekChildren)]),
     bar,
   ]);
 }

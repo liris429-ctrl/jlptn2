@@ -24,13 +24,6 @@ import { registerServiceWorker } from "./pwa/registerSW.ts";
 
 type TabKey = "today" | "grammar" | "vocab" | "game";
 
-const TAB_LABELS: Record<TabKey, string> = {
-  today: "今日",
-  grammar: "文法",
-  vocab: "單字",
-  game: "日文練習",
-};
-
 function makeNavTab(icon: string, label: string): HTMLButtonElement {
   const iconWrap = el("span", { className: "nav-icon-wrap", "aria-hidden": "true" });
   iconWrap.innerHTML = icon;
@@ -76,10 +69,7 @@ async function main(): Promise<void> {
   gameTab.addEventListener("click", () => navigate("/game"));
   nav.append(todayTab, grammarTab, vocabTab, gameTab);
 
-  const titleEl = el("h1", { className: "app-title" }, ["N2たん"]);
-  const header = el("header", { className: "app-header" }, [titleEl]);
-
-  app.append(header, view, nav);
+  app.append(view, nav);
 
   const skeleton = renderLoadingSkeleton(view);
   await Promise.all([loadStore(), openDb()]);
@@ -90,7 +80,6 @@ async function main(): Promise<void> {
     grammarTab.classList.toggle("nav-tab--active", tab === "grammar");
     vocabTab.classList.toggle("nav-tab--active", tab === "vocab");
     gameTab.classList.toggle("nav-tab--active", tab === "game");
-    titleEl.textContent = tab ? TAB_LABELS[tab] : "N2たん";
   };
 
   registerRoute("/", () => {

@@ -12,21 +12,15 @@
   height: 100dvh;
 }
 
-.app-header {
-  padding: var(--space-4) var(--space-4) var(--space-2);
-  border-bottom: 1px solid var(--line);
-}
-
-.app-title {
-  margin: 0;
-  font-size: 1.25rem;
-  letter-spacing: 0.02em;
-}
-
 .app-view {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-4);
+  /* Compensates for the removed app-header's top breathing room (each page
+     now supplies its own heading in-content instead of a shared chrome bar
+     duplicating the active bottom-nav tab), and clears the iPhone notch/
+     dynamic island in standalone PWA mode. */
+  padding-top: max(var(--space-4), env(safe-area-inset-top));
   max-width: 640px;
   width: 100%;
   margin: 0 auto;
@@ -49,7 +43,7 @@
   gap: 2px;
   border: none;
   background: none;
-  padding: var(--space-2) var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-2) max(var(--space-3), env(safe-area-inset-bottom));
   color: var(--ink-faint);
   border-top: 2px solid transparent;
   transition: color 0.15s ease, border-color 0.15s ease;
