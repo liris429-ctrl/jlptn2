@@ -149,3 +149,133 @@
   font-size: var(--text-caption);
   margin: 0;
 }
+
+/* Round 1's celebration - the once-a-day treatment, centered and weightier
+   than anything else on this page. .quiz-finished--extra never uses these. */
+.quiz-finished--main {
+  text-align: center;
+}
+
+.quiz-finished--main .quiz-review {
+  text-align: left;
+}
+
+.quiz-round1-label {
+  color: var(--ink-faint);
+  font-size: var(--text-caption);
+  margin: 0;
+}
+
+.quiz-round1-score {
+  font-family: var(--font-jp-serif);
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.quiz-round1-score span {
+  font-size: var(--text-section);
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.quiz-streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: center;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 12%, var(--paper-raised));
+  color: var(--accent-ink);
+  font-weight: 600;
+  font-size: var(--text-caption);
+  padding: var(--space-1) var(--space-3);
+}
+
+.quiz-finished-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.quiz-finished-actions .btn {
+  width: 100%;
+}
+
+.quiz-finished-action {
+  flex: 1.4;
+  display: flex;
+}
+
+.quiz-finished-action .btn {
+  width: 100%;
+}
+
+/* Deliberately flat/no-shadow like the page's other non-interactive info
+   family (.quiz-review-item et al.) - this whole screen is one compact card,
+   not something to click. */
+.quiz-finished--extra {
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
+  border-radius: var(--radius-panel);
+  padding: var(--space-4);
+}
+
+.quiz-extra-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--ink-soft);
+  font-size: var(--text-body);
+}
+
+.quiz-continue-chip {
+  flex-shrink: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--accent-ink);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+}
+
+.quiz-continue-chip:hover {
+  border-color: var(--accent);
+}
+
+.quiz-exhausted {
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.quiz-finished--extra .quiz-exhausted {
+  border-top: 1px dashed var(--line);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+}
+
+.quiz-exhausted-emoji {
+  font-size: 1.75rem;
+  margin: 0;
+}
+
+.quiz-exhausted-text {
+  font-size: var(--text-body);
+  margin: var(--space-2) 0 0;
+}
+
+.quiz-exhausted-link {
+  display: inline-block;
+  color: var(--ink-faint);
+  font-size: var(--text-caption);
+  margin-top: var(--space-1);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.quiz-exhausted-link:hover {
+  color: var(--ink-soft);
+  text-decoration: underline;
+}

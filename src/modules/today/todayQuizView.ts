@@ -96,36 +96,64 @@ function renderPlaying(state: TodayQuizState, engine: TodayQuizEngine): HTMLElem
   return el("div", { className: "quiz-playing" }, children);
 }
 
-function renderFinished(state: TodayQuizState, engine: TodayQuizEngine, title: string): HTMLElement {
+/** Renders the exhausted/"nothing left to practice" message in place of a
+ * continue action - the pool's natural boundary, not a hard round cap, so it
+ * reads as "you've earned a break" rather than an error or a wall. */
+function renderExhausted(): HTMLElement {
+  const link = el("a", { className: "quiz-exhausted-link" }, ["去玩個連連看放鬆一下？"]);
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    navigate("/game/match");
+  });
+  return el("div", { className: "quiz-exhausted" }, [
+    el("p", { className: "quiz-exhausted-emoji" }, ["👍"]),
+    el("p", { className: "quiz-exhausted-text" }, ["今天的弱點都過一輪了"]),
+    link,
+  ]);
+}
+
+/** Round 1's finished screen: the once-a-day celebration (big score, streak
+ * pill) plus a full wrong-answer review. Its continue action is synchronous
+ * when there are wrongs to retry (no weak-pool padding - see
+ * retryWrongOnly()); only the wrong===0 fallback needs an async preview. */
+function renderMainFinished(state: TodayQuizState, engine: TodayQuizEngine, title: string): HTMLElement {
   const correctCount = state.answers.filter((a) => a.correct).length;
   const total = state.answers.length;
   const wrongAnswers = state.answers.filter((a) => !a.correct);
 
-  const backBtn = el("button", { className: "btn btn--primary", type: "button" }, ["回今日"]);
-  backBtn.addEventListener("click", () => navigate("/today"));
-
-  // The round genuinely had nothing to quiz (empty pool, or every drawn id
-  // failed to resolve) - distinct from "answered 0 of a real round", which
-  // can't happen since selectOption() is the only way to reach "finished"
-  // with questions.length > 0.
-  if (state.questions.length === 0) {
-    return el("div", { className: "quiz-finished" }, [
-      el("h1", {}, [title]),
-      el("p", { className: "quiz-hint" }, ["目前沒有可出的題目，去瀏覽幾個單字或文法後再回來試試。"]),
-      backBtn,
-    ]);
-  }
-
-  const streakEl = el("p", { className: "quiz-accuracy" }, ["連續天數更新中…"]);
+  const streakBadge = el("div", { className: "quiz-streak-badge" }, ["🔥 連續天數更新中…"]);
   void getStreak().then((streak) => {
-    streakEl.textContent = `連續 ${streak} 天`;
-    streakEl.classList.add("today-streak--fresh");
+    streakBadge.textContent = "";
+    streakBadge.append("🔥 ", el("span", {}, [`連續 ${streak} 天`]));
   });
 
+  const backBtn = el("button", { className: "btn btn--secondary", type: "button" }, ["回今日"]);
+  backBtn.addEventListener("click", () => navigate("/today"));
+
+  const actionArea = el("div", { className: "quiz-finished-action" });
+  if (wrongAnswers.length > 0) {
+    const retryBtn = el("button", { className: "btn btn--primary", type: "button" }, [
+      `再練這 ${wrongAnswers.length} 個錯題`,
+    ]);
+    retryBtn.addEventListener("click", () => engine.retryWrongOnly());
+    actionArea.append(retryBtn);
+  } else {
+    void engine.previewContinueCount().then((count) => {
+      actionArea.innerHTML = "";
+      if (count === 0) {
+        actionArea.append(renderExhausted());
+        return;
+      }
+      const continueBtn = el("button", { className: "btn btn--primary", type: "button" }, [`再練 ${count} 個弱點`]);
+      continueBtn.addEventListener("click", () => void engine.continueRound());
+      actionArea.append(continueBtn);
+    });
+  }
+
   const children: (Node | string)[] = [
-    el("h1", {}, [title]),
-    el("p", { className: "quiz-score" }, [`${total} 題中答對 ${correctCount} 題`]),
-    streakEl,
+    el("p", { className: "quiz-round1-label" }, [title, " 完成"]),
+    el("p", { className: "quiz-round1-score" }, [`${correctCount}`, el("span", {}, [`/${total}`])]),
+    streakBadge,
   ];
 
   if (wrongAnswers.length > 0) {
@@ -135,14 +163,62 @@ function renderFinished(state: TodayQuizState, engine: TodayQuizEngine, title: s
         el("p", { className: "quiz-review-answer" }, [`正解：${a.correctText}；你選的是「${a.chosenLabel}」的語意`]),
       ]),
     );
-    const retryBtn = el("button", { className: "btn btn--secondary", type: "button" }, ["錯題再測一次"]);
-    retryBtn.addEventListener("click", () => engine.retryWrongOnly());
-    children.push(
-      el("section", { className: "quiz-review" }, [el("h3", {}, ["答錯的題目"]), ...items]),
-      retryBtn,
-    );
+    children.push(el("section", { className: "quiz-review" }, [el("h3", {}, ["答錯的題目"]), ...items]));
   }
 
-  children.push(backBtn);
-  return el("div", { className: "quiz-finished" }, children);
+  children.push(el("div", { className: "quiz-finished-actions" }, [backBtn, actionArea]));
+  return el("div", { className: "quiz-finished quiz-finished--main" }, children);
+}
+
+/** Any 續攤 round's finished screen: deliberately subdued (no big number, no
+ * streak/fire - that celebration is round 1's alone) - just the score and an
+ * honest, shrinking "再練 N 個" continue action, or the exhausted message
+ * once the pool runs dry. */
+function renderExtraFinished(state: TodayQuizState, engine: TodayQuizEngine): HTMLElement {
+  const correctCount = state.answers.filter((a) => a.correct).length;
+  const total = state.answers.length;
+
+  const actionArea = el("div", { className: "quiz-continue-area" }, ["…"]);
+  void engine.previewContinueCount().then((count) => {
+    actionArea.innerHTML = "";
+    if (count === 0) {
+      actionArea.append(renderExhausted());
+      return;
+    }
+    const continueBtn = el("button", { className: "quiz-continue-chip", type: "button" }, [`再練 ${count} 個`]);
+    continueBtn.addEventListener("click", () => void engine.continueRound());
+    actionArea.append(continueBtn);
+  });
+
+  const summaryRow = el("div", { className: "quiz-extra-summary-row" }, [
+    el("span", {}, ["這輪答對 ", el("strong", {}, [`${correctCount}/${total}`])]),
+  ]);
+  summaryRow.append(actionArea);
+
+  return el("div", { className: "quiz-finished quiz-finished--extra" }, [summaryRow]);
+}
+
+function renderFinished(state: TodayQuizState, engine: TodayQuizEngine, title: string): HTMLElement {
+  // The round genuinely had nothing to quiz (empty pool, or every drawn id
+  // failed to resolve) - distinct from "answered 0 of a real round", which
+  // can't happen since selectOption() is the only way to reach "finished"
+  // with questions.length > 0. Round 1 coming up empty is a different,
+  // rarer situation (new-user/data-poor) from an "extra" round's pool
+  // simply running dry, so they get different copy.
+  if (state.questions.length === 0) {
+    if (state.roundKind === "extra") {
+      return el("div", { className: "quiz-finished quiz-finished--extra" }, [renderExhausted()]);
+    }
+    const backBtn = el("button", { className: "btn btn--primary", type: "button" }, ["回今日"]);
+    backBtn.addEventListener("click", () => navigate("/today"));
+    return el("div", { className: "quiz-finished" }, [
+      el("h1", {}, [title]),
+      el("p", { className: "quiz-hint" }, ["目前沒有可出的題目，去瀏覽幾個單字或文法後再回來試試。"]),
+      backBtn,
+    ]);
+  }
+
+  return state.roundKind === "main"
+    ? renderMainFinished(state, engine, title)
+    : renderExtraFinished(state, engine);
 }

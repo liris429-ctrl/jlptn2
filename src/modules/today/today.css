@@ -154,6 +154,86 @@
   padding: var(--space-2) var(--space-6);
 }
 
+/* 進行中: same card shape/color, this thin bar is the only new element -
+   transform (not width) for the fill, same GPU-friendly convention as
+   .game-progress-fill. */
+.today-main-cta-progress-track {
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--paper-raised) 35%, transparent);
+  overflow: hidden;
+}
+
+.today-main-cta-progress-fill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left;
+  border-radius: var(--radius-pill);
+  background: var(--paper-raised);
+  transition: transform 0.2s ease;
+}
+
+/* 已完成: the primary CTA downgrades to a flat receipt - no gradient, no
+   shadow, same "flat info" family as .today-secondary-card (border only,
+   no box-shadow) since this is a status card, not an action, aside from the
+   one small secondary "再練10題" entry point inside it. */
+.today-main-cta-done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--paper-raised);
+  padding: var(--space-3) var(--space-4);
+}
+
+.today-main-cta-done-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+}
+
+.today-main-cta-done-icon .today-icon {
+  color: var(--success);
+}
+
+.today-main-cta-done-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.today-main-cta-done-title {
+  font-weight: 600;
+}
+
+.today-main-cta-done-sub {
+  color: var(--ink-faint);
+  font-size: var(--text-caption);
+}
+
+.today-main-cta-continue {
+  flex-shrink: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--accent-ink);
+  font-size: var(--text-caption);
+  padding: var(--space-1) var(--space-3);
+}
+
+.today-main-cta-continue:hover {
+  border-color: var(--accent);
+}
+
 .today-section-title {
   margin: 0 0 var(--space-3);
   color: var(--ink-faint);

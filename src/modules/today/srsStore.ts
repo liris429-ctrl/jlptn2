@@ -47,6 +47,13 @@ export interface DailyStats {
   answered: number;
   correct: number;
   games: Record<string, number>;
+  /** Snapshot of round 1's OWN score (the fixed SRS-ratio "今日十問"), set
+   * once when that specific round finishes - distinct from the running
+   * answered/correct totals above, which also accumulate every 續攤 round
+   * and anki/lookup event that same day. Optional because records written
+   * before this field existed won't have it - treat missing as null, not as
+   * "round 1 done with a blank score". */
+  firstRound?: { correct: number; total: number } | null;
 }
 
 const RECENT_LIMIT = 10;
@@ -306,6 +313,36 @@ export async function getStreak(): Promise<number> {
   return streak;
 }
 
+/** Writes round 1's own score once it finishes - see DailyStats.firstRound. */
+export async function recordFirstRoundResult(correct: number, total: number, now: number = Date.now()): Promise<void> {
+  const today = getStudyDate(now);
+  const db = await openDb();
+  const tx = db.transaction(STORE_DAILY_STATS, "readwrite");
+  const store = tx.objectStore(STORE_DAILY_STATS);
+  const existing = await new Promise<DailyStats | undefined>((resolve, reject) => {
+    const req = store.get(today);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  const stats: DailyStats = existing ?? { date: today, answered: 0, correct: 0, games: {} };
+  stats.firstRound = { correct, total };
+  store.put(stats);
+  await new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+  emit();
+}
+
+/** null when round 1 ("今日十問") hasn't finished yet today. */
+export async function getTodayFirstRoundResult(
+  now: number = Date.now(),
+): Promise<{ correct: number; total: number } | null> {
+  const stats = await dbGet<DailyStats>(STORE_DAILY_STATS, getStudyDate(now));
+  return stats?.firstRound ?? null;
+}
+
 export interface WeekSummary {
   totalAnswered: number;
   /** null when this week has under 20 answers - not enough data to show a rate. */
@@ -414,22 +451,51 @@ export async function getNewCount(learnedUpTo?: number): Promise<number> {
   return (await getNewCandidates(learnedUpTo)).length;
 }
 
+interface ServedTodayRecord {
+  date: string;
+  ids: string[];
+}
+
+const SERVED_TODAY_META_KEY = "servedTodayIds";
+
+/** Reads back today's served-word record, embedding its own `date` so a
+ * leftover record from a prior day is recognized as stale and treated as
+ * empty (rather than trusting the meta key's mere presence) - self-resetting
+ * on every read, no separate "clear yesterday's record" step needed. */
+async function readServedTodayIds(now: number = Date.now()): Promise<Set<string>> {
+  const rec = await getMeta<ServedTodayRecord>(SERVED_TODAY_META_KEY);
+  if (rec == null || rec.date !== getStudyDate(now)) return new Set();
+  return new Set(rec.ids);
+}
+
+/** Adds to today's served-word record - words already asked today (in round 1
+ * or any 續攤 round) so a later round doesn't repeat them. */
+export async function markWordsServedToday(words: DrawnWord[], now: number = Date.now()): Promise<void> {
+  if (words.length === 0) return;
+  const current = await readServedTodayIds(now);
+  for (const w of words) current.add(makeKey(w.kind, w.id));
+  await setMeta(SERVED_TODAY_META_KEY, { date: getStudyDate(now), ids: [...current] } satisfies ServedTodayRecord);
+}
+
 /**
  * Draws up to `counts.review`/`counts.weak`/`counts.new` candidates from three
  * disjoint pools (a word picked for one pool is excluded from the others, so
- * the same word never appears twice - "同一詞不會重複"). If a pool comes up
- * short of its own target, the shortfall is topped up from the other pools'
- * leftover (unpicked) candidates, tried in review -> weak -> new priority
- * order (spec 3.1's "缺額依複習→弱點→新詞順序遞補") - so the round still
- * reaches the full requested total whenever enough words exist *somewhere*,
- * not just in whichever pool happened to be data-poor this phase.
+ * the same word never appears twice - "同一詞不會重複"), also excluding
+ * anything already served today (e.g. an abandoned-and-restarted round 1).
+ * If a pool comes up short of its own target, the shortfall is topped up
+ * from the other pools' leftover (unpicked) candidates, tried in review ->
+ * weak -> new priority order (spec 3.1's "缺額依複習→弱點→新詞順序遞補") -
+ * so the round still reaches the full requested total whenever enough words
+ * exist *somewhere*, not just in whichever pool happened to be data-poor
+ * this phase.
  */
 export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): Promise<DrawnPools> {
-  const usedKeys = new Set<string>();
+  const usedKeys = await readServedTodayIds();
 
   const dueRange = IDBKeyRange.upperBound(getStudyDate());
   const dueWords = await dbGetAllByIndexRange<WordState>(STORE_WORD_STATE, "srsDue", dueRange);
-  const reviewPicks = sample(dueWords, Math.min(counts.review, dueWords.length));
+  const dueCandidates = dueWords.filter((w) => !usedKeys.has(w.key));
+  const reviewPicks = sample(dueCandidates, Math.min(counts.review, dueCandidates.length));
   for (const w of reviewPicks) usedKeys.add(w.key);
 
   const weakCandidates = (await getWeakWords()).filter((w) => !usedKeys.has(w.key));
@@ -469,6 +535,28 @@ export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): P
     weak: weakPicks.map((w) => ({ kind: w.kind, id: w.id })),
     new: newPicks,
   };
+}
+
+/**
+ * Composes a 續攤 (extra) round: `priorWrong` first (the caller's own
+ * just-finished round's wrong answers, when it has any), padded with
+ * weak-pool candidates up to `target` - no new words, and excluding anything
+ * already served today (and `priorWrong` itself, so it's never double-
+ * counted). Pure/read-only: does not mark the result as served - the caller
+ * does that only once it actually commits to using the drawn set (see
+ * todayQuizEngine.ts), so this is also safe to call repeatedly as a preview.
+ * Naturally returns fewer than `target` (down to empty) once both the wrong
+ * list and the weak pool run dry - "池子枯竭時自然收尾", not an error case.
+ */
+export async function drawExtraRoundPool(priorWrong: DrawnWord[], target: number): Promise<DrawnWord[]> {
+  const served = await readServedTodayIds();
+  const priorKeys = new Set(priorWrong.map((w) => makeKey(w.kind, w.id)));
+  const weakCandidates = (await getWeakWords())
+    .filter((w) => !served.has(w.key) && !priorKeys.has(w.key))
+    .map((w): DrawnWord => ({ kind: w.kind, id: w.id }));
+  const needed = Math.max(0, target - priorWrong.length);
+  const fill = sample(weakCandidates, Math.min(needed, weakCandidates.length));
+  return [...priorWrong, ...fill];
 }
 
 /**

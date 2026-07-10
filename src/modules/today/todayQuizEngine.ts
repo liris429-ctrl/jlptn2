@@ -2,7 +2,19 @@ import type { GrammarEntry, VocabEntry } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import type { FavoriteKind } from "../favorites/favoritesStore.ts";
 import { sample, shuffle } from "../game/shuffle.ts";
-import { daysUntil, drawTodayPool, getMeta, getStudyDate, recordAnswer, type DrawnWord } from "./srsStore.ts";
+import {
+  daysUntil,
+  drawExtraRoundPool,
+  drawTodayPool,
+  getMeta,
+  getStudyDate,
+  getTodayFirstRoundResult,
+  markWordsServedToday,
+  recordAnswer,
+  recordFirstRoundResult,
+  setMeta,
+  type DrawnWord,
+} from "./srsStore.ts";
 
 const QUESTION_COUNT = 10;
 const MIN_GRAMMAR_QUESTIONS = 2;
@@ -49,6 +61,12 @@ export interface TodayQuestion {
 
 export type TodayQuizPhase = "playing" | "finished";
 
+/** "main" = the fixed SRS-ratio "今日十問" (once/day, drives streak + the
+ * celebratory finished screen); "extra" = any 續攤 round (wrong-priority +
+ * weak-fill or an exact wrong-only retry) - never touches the daily
+ * completion flag, gets the deliberately-subdued finished screen. */
+export type TodayRoundKind = "main" | "extra";
+
 export interface TodayAnswerRecord {
   kind: FavoriteKind;
   id: string;
@@ -67,9 +85,35 @@ export interface TodayQuizState {
    * "already answered", not "tentatively picked". */
   selectedIndex: number | null;
   answers: TodayAnswerRecord[];
+  roundKind: TodayRoundKind;
 }
 
 type Listener = (state: TodayQuizState) => void;
+
+interface RoundSnapshot {
+  date: string;
+  roundKind: TodayRoundKind;
+  questions: TodayQuestion[];
+  /** currentIndex is deliberately NOT stored: it's derivable as
+   * answers.length, and trusting a separately-persisted copy risks it
+   * disagreeing with answers (e.g. a snapshot taken mid-selectOption(),
+   * after the answer was pushed but before next() advances currentIndex) -
+   * that mismatch once caused resume to re-show an already-answered
+   * question as fresh, double-recording it. */
+  answers: TodayAnswerRecord[];
+}
+
+const ROUND_SNAPSHOT_META_KEY = "todayRoundSnapshot";
+
+/** Home page ("進行中" main-CTA state) reads just this summary - kept here
+ * (not in srsStore.ts) so the full RoundSnapshot shape stays this module's
+ * own concern; todayView.ts never needs to know what a snapshot looks like. */
+export async function getInProgressRoundSummary(): Promise<{ currentIndex: number; total: number } | null> {
+  const snapshot = await getMeta<RoundSnapshot>(ROUND_SNAPSHOT_META_KEY);
+  if (snapshot == null || snapshot.date !== getStudyDate() || snapshot.questions.length === 0) return null;
+  if (snapshot.answers.length >= snapshot.questions.length) return null;
+  return { currentIndex: snapshot.answers.length, total: snapshot.questions.length };
+}
 
 function buildVocabQuestion(entry: VocabEntry, allVocab: VocabEntry[]): TodayQuestion {
   const antonymKanjis = new Set(
@@ -152,10 +196,18 @@ function enforceGrammarMinimum(drawn: DrawnWord[]): DrawnWord[] {
  * setup phase (fixed 10 questions, drawn as soon as start() is called from
  * the today page's main CTA) and no navigation guard in the view (leaving
  * mid-round is fine: every answer is already durably recorded via
- * recordAnswer as it happens, so only the current round position is lost).
+ * recordAnswer as it happens, so only the current round position is lost -
+ * see persistSnapshot()/clearSnapshot() for what IS carried across a leave).
  */
 export class TodayQuizEngine {
-  private state: TodayQuizState = { phase: "playing", questions: [], currentIndex: 0, selectedIndex: null, answers: [] };
+  private state: TodayQuizState = {
+    phase: "playing",
+    questions: [],
+    currentIndex: 0,
+    selectedIndex: null,
+    answers: [],
+    roundKind: "main",
+  };
   private listeners = new Set<Listener>();
   private advanceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -176,7 +228,67 @@ export class TodayQuizEngine {
     }
   }
 
+  /** Carries an in-progress round across a full page leave-and-return (the
+   * "進行中" main-CTA state on the home page, and resuming into the exact
+   * same question on re-entry) - only meaningful while phase is "playing";
+   * cleared once the round finishes since there's nothing left to resume. */
+  private async persistSnapshot(): Promise<void> {
+    const snapshot: RoundSnapshot = {
+      date: getStudyDate(),
+      roundKind: this.state.roundKind,
+      questions: this.state.questions,
+      answers: this.state.answers,
+    };
+    await setMeta(ROUND_SNAPSHOT_META_KEY, snapshot);
+  }
+
+  private async clearSnapshot(): Promise<void> {
+    await setMeta(ROUND_SNAPSHOT_META_KEY, null);
+  }
+
+  /**
+   * Entry point for the home page's main CTA. Resumes an in-progress round
+   * from earlier today first (if any); otherwise draws round 1 ("今日十問",
+   * the fixed SRS-ratio round) if it hasn't run yet today, or transparently
+   * falls through to a weak-fill-only 續攤 round if it has - this covers a
+   * fresh engine instance being started (e.g. via direct navigation or the
+   * "已完成" card's "再練10題" link) after round 1 is already done, without
+   * the view needing to know which mode to request.
+   */
   async start(): Promise<void> {
+    const today = getStudyDate();
+    const snapshot = await getMeta<RoundSnapshot>(ROUND_SNAPSHOT_META_KEY);
+    // currentIndex is derived from answers.length (see RoundSnapshot), not
+    // trusted as a separately-stored value - this is what resuming exactly
+    // at "the next unanswered question" (never re-asking one already
+    // recorded) actually depends on.
+    if (
+      snapshot != null &&
+      snapshot.date === today &&
+      snapshot.questions.length > 0 &&
+      snapshot.answers.length < snapshot.questions.length
+    ) {
+      this.state = {
+        phase: "playing",
+        questions: snapshot.questions,
+        currentIndex: snapshot.answers.length,
+        selectedIndex: null,
+        answers: snapshot.answers,
+        roundKind: snapshot.roundKind,
+      };
+      this.emit();
+      return;
+    }
+
+    const firstRoundDone = (await getTodayFirstRoundResult()) != null;
+    if (!firstRoundDone) {
+      await this.startMainRound();
+    } else {
+      await this.startExtraRound([]);
+    }
+  }
+
+  private async startMainRound(): Promise<void> {
     const today = getStudyDate();
     const [examDate, learnedUpTo] = await Promise.all([
       getMeta<string>("examDate"),
@@ -189,24 +301,57 @@ export class TodayQuizEngine {
     let drawn = [...pools.review, ...pools.weak, ...pools.new];
     drawn = enforceGrammarMinimum(drawn);
     drawn = shuffle(drawn).slice(0, QUESTION_COUNT);
+    await markWordsServedToday(drawn);
 
     const questions = drawn.map(buildQuestion).filter((q): q is TodayQuestion => q !== null);
-
-    // A "playing" phase with 0 questions is indistinguishable from the
-    // engine's pre-start() initial state to the view (see todayQuizView.ts's
-    // "still preparing" check) - if the pool genuinely comes up empty (or
-    // every drawn id fails to resolve against the current vocab/grammar
-    // data), that used to render as a permanently stuck loading screen
-    // instead of a real "nothing to quiz" result. loadQuestions() already
-    // got this right; start() didn't.
-    this.loadQuestions(questions);
+    this.loadQuestions(questions, "main");
   }
 
-  /** Loads a fixed set of questions directly - used by retryWrongOnly() and tests. */
-  private loadQuestions(questions: TodayQuestion[]): void {
+  /** 續攤: `priorWrong` first, padded with weak-pool fill up to
+   * QUESTION_COUNT, no new words, never touches the daily-completion flag.
+   * Naturally comes up with fewer questions (down to zero) once the wrong
+   * list and weak pool both run dry - "池子枯竭時自然收尾". */
+  private async startExtraRound(priorWrong: DrawnWord[]): Promise<void> {
+    const composed = await drawExtraRoundPool(priorWrong, QUESTION_COUNT);
+    await markWordsServedToday(composed);
+    const questions = composed.map(buildQuestion).filter((q): q is TodayQuestion => q !== null);
+    this.loadQuestions(questions, "extra");
+  }
+
+  /** Read-only preview of what continueRound() would draw right now (same
+   * composition, no side effects) - lets the finished screen show an honest
+   * "再練 N 個" count, or the exhausted message, before the user commits. */
+  async previewContinueCount(): Promise<number> {
+    const priorWrong = this.wrongAsDrawnWords();
+    const composed = await drawExtraRoundPool(priorWrong, QUESTION_COUNT);
+    return composed.length;
+  }
+
+  /** Starts the next 續攤 round from this round's own wrong answers (if any)
+   * plus weak-pool fill - the general "再練" action on any finished screen
+   * except round 1's own exact-wrong-only retry (see retryWrongOnly()). */
+  async continueRound(): Promise<void> {
+    await this.startExtraRound(this.wrongAsDrawnWords());
+  }
+
+  private wrongAsDrawnWords(): DrawnWord[] {
+    return this.state.answers.filter((a) => !a.correct).map((a) => ({ kind: a.kind, id: a.id }));
+  }
+
+  /** Loads a fixed set of questions directly - used by retryWrongOnly(),
+   * startWithWords(), and tests. */
+  private loadQuestions(questions: TodayQuestion[], roundKind: TodayRoundKind = "extra"): void {
     this.clearTimer();
-    this.state = { phase: questions.length > 0 ? "playing" : "finished", questions, currentIndex: 0, selectedIndex: null, answers: [] };
+    this.state = {
+      phase: questions.length > 0 ? "playing" : "finished",
+      questions,
+      currentIndex: 0,
+      selectedIndex: null,
+      answers: [],
+      roundKind,
+    };
     this.emit();
+    void (this.state.phase === "playing" ? this.persistSnapshot() : this.clearSnapshot());
   }
 
   /**
@@ -214,10 +359,13 @@ export class TodayQuizEngine {
    * no grammar minimum, no 10-question cap. Used by milestone 3's 昨夜複習
    * mini-quiz ("只考那批,寫入 source=quiz"), which the view still records
    * through the normal recordAnswer(..., "quiz") path in selectOption().
+   * Not round 1 and not a 續攤 (it's a separate milestone-3 feature), but
+   * "extra" is the correct roundKind for it either way: it should never get
+   * the round-1-only celebratory finished screen.
    */
   startWithWords(words: DrawnWord[]): void {
     const questions = shuffle(words).map(buildQuestion).filter((q): q is TodayQuestion => q !== null);
-    this.loadQuestions(questions);
+    this.loadQuestions(questions, "extra");
   }
 
   /** Grades immediately (no separate confirm step), records the answer, and
@@ -238,6 +386,7 @@ export class TodayQuizEngine {
     };
     this.state = { ...this.state, selectedIndex: index, answers: [...this.state.answers, record] };
     this.emit();
+    void this.persistSnapshot();
 
     this.advanceTimer = setTimeout(() => this.next(), AUTO_ADVANCE_MS);
   }
@@ -248,17 +397,27 @@ export class TodayQuizEngine {
     const nextIndex = this.state.currentIndex + 1;
     if (nextIndex >= this.state.questions.length) {
       this.state = { ...this.state, phase: "finished" };
+      if (this.state.roundKind === "main") {
+        const correct = this.state.answers.filter((a) => a.correct).length;
+        void recordFirstRoundResult(correct, this.state.answers.length);
+      }
+      void this.clearSnapshot();
     } else {
       this.state = { ...this.state, currentIndex: nextIndex, selectedIndex: null };
+      void this.persistSnapshot();
     }
     this.emit();
   }
 
-  /** Re-tests only this round's wrong questions, in their original form -
-   * does not re-apply the pool-ratio rules. */
+  /** Re-tests only this round's wrong questions, in their original form, no
+   * weak-pool padding - the round-1-finished screen's "再練這N個錯題" action
+   * specifically (see continueRound() for the padded, general 續攤 case).
+   * Still marked "extra": never re-triggers the round-1 celebratory screen. */
   retryWrongOnly(): void {
     const wrongIndices = this.state.answers.map((a, i) => (a.correct ? -1 : i)).filter((i) => i >= 0);
-    this.loadQuestions(wrongIndices.map((i) => this.state.questions[i]!));
+    const wrongQuestions = wrongIndices.map((i) => this.state.questions[i]!);
+    void markWordsServedToday(wrongQuestions.map((q) => ({ kind: q.kind, id: q.id })));
+    this.loadQuestions(wrongQuestions, "extra");
   }
 
   stop(): void {

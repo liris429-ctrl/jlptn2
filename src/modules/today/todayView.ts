@@ -13,6 +13,7 @@ import {
   getRecentWrongEntries,
   getStreak,
   getStudyDate,
+  getTodayFirstRoundResult,
   getWeakCount,
   getWeekSummary,
   getYesterdayNewWords,
@@ -24,6 +25,7 @@ import {
   type WeekSummary,
   type WordState,
 } from "./srsStore.ts";
+import { getInProgressRoundSummary } from "./todayQuizEngine.ts";
 import { TODAY_ICONS } from "./todayIcons.ts";
 
 const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
@@ -66,6 +68,12 @@ interface TodayData {
   week: WeekSummary;
   streakBroken: boolean;
   daysSinceBackup: number | null;
+  /** Round 1's ("今日十問") own score, once it's finished today - drives the
+   * main CTA's "已完成" receipt state. */
+  firstRoundResult: { correct: number; total: number } | null;
+  /** A round left mid-way earlier today - drives the main CTA's "進行中"
+   * state ("繼續・第 X/10 題"). */
+  inProgress: { currentIndex: number; total: number } | null;
 }
 
 async function loadTodayData(): Promise<TodayData> {
@@ -82,6 +90,8 @@ async function loadTodayData(): Promise<TodayData> {
     yesterdayNew,
     dailyGrammarId,
     lastBackup,
+    firstRoundResult,
+    inProgress,
   ] = await Promise.all([
     getMeta<string>("examDate"),
     getDueCount(),
@@ -94,6 +104,8 @@ async function loadTodayData(): Promise<TodayData> {
     getYesterdayNewWords(),
     getDailyGrammarPick(today),
     getMeta<number>("lastBackup"),
+    getTodayFirstRoundResult(),
+    getInProgressRoundSummary(),
   ]);
 
   const statsByDate = new Map(statsRange.map((s) => [s.date, s]));
@@ -126,6 +138,8 @@ async function loadTodayData(): Promise<TodayData> {
     week,
     streakBroken,
     daysSinceBackup,
+    firstRoundResult,
+    inProgress,
   };
 }
 
@@ -306,7 +320,19 @@ function renderCountdownRow(data: TodayData, onChange: () => void): HTMLElement 
   ]);
 }
 
+/** One card, three states it "becomes" rather than three buttons side by
+ * side: 未開始 (default gradient CTA) -> 進行中 (same shape, "繼續" +
+ * progress bar, once a round is left mid-way) -> 已完成 (downgrades from
+ * primary action to a flat receipt, with "再練10題" as its own secondary
+ * entry point - see todayQuizEngine.ts's start() for how that transparently
+ * becomes a weak-fill 續攤 round). */
 function renderMainCta(data: TodayData): HTMLElement {
+  if (data.inProgress != null) return renderMainCtaInProgress(data.inProgress);
+  if (data.firstRoundResult != null) return renderMainCtaDone(data);
+  return renderMainCtaStart(data);
+}
+
+function renderMainCtaStart(data: TodayData): HTMLElement {
   const btn = el("button", { className: "today-main-cta", type: "button" }, [
     el("div", { className: "today-main-cta-text" }, [
       el("span", { className: "today-main-cta-title" }, ["今日の10問"]),
@@ -318,6 +344,43 @@ function renderMainCta(data: TodayData): HTMLElement {
   ]);
   btn.addEventListener("click", () => navigate("/today/quiz"));
   return btn;
+}
+
+function renderMainCtaInProgress(progress: { currentIndex: number; total: number }): HTMLElement {
+  const fill = el("div", { className: "today-main-cta-progress-fill" });
+  fill.style.transform = `scaleX(${progress.currentIndex / progress.total})`;
+
+  const btn = el("button", { className: "today-main-cta", type: "button" }, [
+    el("div", { className: "today-main-cta-text" }, [
+      el("span", { className: "today-main-cta-title" }, [
+        `繼續・第 ${progress.currentIndex + 1}/${progress.total} 題`,
+      ]),
+      el("div", { className: "today-main-cta-progress-track" }, [fill]),
+    ]),
+    el("span", { className: "today-main-cta-start" }, ["繼續"]),
+  ]);
+  btn.addEventListener("click", () => navigate("/today/quiz"));
+  return btn;
+}
+
+function renderMainCtaDone(data: TodayData): HTMLElement {
+  const result = data.firstRoundResult!;
+  const continueLink = el("button", { className: "today-main-cta-continue", type: "button" }, ["再練 10 題"]);
+  continueLink.addEventListener("click", (event) => {
+    event.stopPropagation();
+    navigate("/today/quiz");
+  });
+
+  return el("div", { className: "today-main-cta-done" }, [
+    el("div", { className: "today-main-cta-done-icon" }, [icon(TODAY_ICONS.check)]),
+    el("div", { className: "today-main-cta-done-text" }, [
+      el("span", { className: "today-main-cta-done-title" }, ["今日の10問 完成"]),
+      el("span", { className: "today-main-cta-done-sub" }, [
+        `答對 ${result.correct}/${result.total}・連續 ${data.streak} 天 🔥`,
+      ]),
+    ]),
+    continueLink,
+  ]);
 }
 
 /** Two static/conditional shortcut cards: 昨夜複習 (milestone 3's entry point,

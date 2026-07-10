@@ -39,6 +39,11 @@ const {
   getStreak,
   getWeekSummary,
   drawTodayPool,
+  drawExtraRoundPool,
+  markWordsServedToday,
+  recordFirstRoundResult,
+  getTodayFirstRoundResult,
+  getDailyStatsRange,
   getDailyGrammarPick,
   exportAllData,
   setMeta,
@@ -318,6 +323,91 @@ describe("drawTodayPool", () => {
     expect(new Set(allIds).size).toBe(allIds.length); // still no duplicates
     expect(allIds.length).toBe(3); // shortfall filled from the new pool, not left at 1
     vi.restoreAllMocks();
+  });
+
+  it("excludes words already served today, even if otherwise eligible (e.g. an abandoned-and-restarted round 1)", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 1, 12, 0));
+    await recordAnswer("vocab", "v-0", false, "quiz"); // due tomorrow (7/2)
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 2, 12, 0));
+
+    await markWordsServedToday([{ kind: "vocab", id: "v-0" }]);
+    const pools = await drawTodayPool({ review: 5, weak: 0, new: 0 });
+    const allIds = [...pools.review, ...pools.weak, ...pools.new].map((w) => `${w.kind}:${w.id}`);
+    expect(allIds).not.toContain("vocab:v-0");
+    vi.restoreAllMocks();
+  });
+});
+
+describe("markWordsServedToday / drawExtraRoundPool", () => {
+  it("puts priorWrong first, then pads with weak-pool fill up to target", async () => {
+    for (const id of ["v-1", "v-2"]) {
+      await recordAnswer("vocab", id, false, "quiz");
+      await recordAnswer("vocab", id, false, "quiz");
+      await recordAnswer("vocab", id, false, "quiz");
+    }
+    const composed = await drawExtraRoundPool([{ kind: "vocab", id: "v-0" }], 2);
+    expect(composed[0]).toEqual({ kind: "vocab", id: "v-0" });
+    expect(composed).toHaveLength(2);
+  });
+
+  it("excludes already-served words from the weak-pool fill", async () => {
+    for (const id of ["v-0", "v-1", "v-2"]) {
+      await recordAnswer("vocab", id, false, "quiz");
+      await recordAnswer("vocab", id, false, "quiz");
+      await recordAnswer("vocab", id, false, "quiz");
+    }
+    await markWordsServedToday([{ kind: "vocab", id: "v-0" }]);
+    const composed = await drawExtraRoundPool([], 10);
+    expect(composed.map((w) => w.id)).not.toContain("v-0");
+  });
+
+  it("naturally shrinks to empty once priorWrong and the weak pool both run dry", async () => {
+    expect(await drawExtraRoundPool([], 10)).toHaveLength(0);
+  });
+
+  it("is pure - doesn't itself mark anything as served", async () => {
+    for (const id of ["v-0"]) {
+      await recordAnswer("vocab", id, false, "quiz");
+      await recordAnswer("vocab", id, false, "quiz");
+      await recordAnswer("vocab", id, false, "quiz");
+    }
+    await drawExtraRoundPool([], 10);
+    // Calling it again should still see v-0 as available, since the first
+    // call didn't mark it served on its own.
+    const second = await drawExtraRoundPool([], 10);
+    expect(second.map((w) => w.id)).toContain("v-0");
+  });
+
+  it("resets the served-today record on a new study day", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 1, 12, 0));
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await markWordsServedToday([{ kind: "vocab", id: "v-0" }]);
+    expect((await drawExtraRoundPool([], 10)).map((w) => w.id)).not.toContain("v-0");
+
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 2, 12, 0));
+    expect((await drawExtraRoundPool([], 10)).map((w) => w.id)).toContain("v-0");
+    vi.restoreAllMocks();
+  });
+});
+
+describe("recordFirstRoundResult / getTodayFirstRoundResult", () => {
+  it("is null before round 1 finishes today", async () => {
+    expect(await getTodayFirstRoundResult()).toBeNull();
+  });
+
+  it("stores and returns round 1's own score", async () => {
+    await recordFirstRoundResult(8, 10);
+    expect(await getTodayFirstRoundResult()).toEqual({ correct: 8, total: 10 });
+  });
+
+  it("doesn't interfere with the running answered/correct daily totals", async () => {
+    await recordAnswer("vocab", "v-0", true, "quiz");
+    await recordFirstRoundResult(1, 1);
+    const stats = await getDailyStatsRange(1);
+    expect(stats[0]!.answered).toBe(1);
+    expect(stats[0]!.firstRound).toEqual({ correct: 1, total: 1 });
   });
 });
 
