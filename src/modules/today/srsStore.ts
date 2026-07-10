@@ -56,6 +56,7 @@ const WEAK_MIN_SEEN = 3;
 const RECENT_WRONG_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const WEEK_SUMMARY_MIN_ANSWERED = 20;
 const WEEK_SUMMARY_DIFF_THRESHOLD_PCT = 5;
+const DAILY_GRAMMAR_WEAK_POOL_SIZE = 10;
 
 const listeners = new Set<() => void>();
 
@@ -494,22 +495,43 @@ function seededRandom(seed: string): number {
 
 /**
  * Milestone 3's 每日一文法卡: a deterministic per-day pick (seeded by the
- * study date, so it doesn't change on every re-render/reload within the same
- * day), in three priority tiers:
+ * study date), locked in and cached in `meta` the first time it's computed
+ * for that date. Without this, the pick was recomputed from live data on
+ * every call: `untouched.length` (and the tier-2 weak pool) shrinks the
+ * moment ANY grammar entry gets touched that day - including the picked
+ * entry itself, just from the user reading it - which shifted the seeded
+ * index against a now-different-sized pool and silently changed "today's"
+ * result mid-day. Caching the resolved id means today's pick is decided once
+ * (whenever the user first opens the app that day) and stays that entry no
+ * matter what else gets touched afterward - "today's assignment" behaves
+ * like a real daily task, not a value that can drift underneath the user.
+ *
+ * Selection, in three priority tiers:
  *   1. Grammar never touched at all - "每天滴灌一條沒看過的文法" is this
  *      feature's actual purpose, not a fallback, so untouched grammar always
  *      wins while any exists.
  *   2. Once every grammar point has been touched, surface a genuine weak
- *      spot - but only among entries tested enough times (seen >= 3, same
- *      threshold as getWeakWords) for `mastery` to mean anything. Without
- *      this a single wrong first look (seen=1, mastery=0) would permanently
- *      dominate this ranking over words that are actually chronically weak.
+ *      spot: among entries tested enough times (seen >= 3, same threshold as
+ *      getWeakWords) for `mastery` to mean anything, take the
+ *      DAILY_GRAMMAR_WEAK_POOL_SIZE lowest-mastery ones and seed-pick one of
+ *      those - keeps the "surface a weak spot" intent without pinning every
+ *      day to the single worst entry until it happens to improve.
  *   3. Last resort, when everything is touched but nothing has reached
  *      seen >= 3 yet (e.g. right after a fresh start): fall back to raw
  *      lowest mastery across all touched entries, so this still returns a
  *      real pick instead of null.
  */
 export async function getDailyGrammarPick(seedDate: string = getStudyDate()): Promise<string | null> {
+  const cacheKey = `dailyGrammarPick:${seedDate}`;
+  const cached = await getMeta<string | null>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const pick = await computeDailyGrammarPick(seedDate);
+  await setMeta(cacheKey, pick);
+  return pick;
+}
+
+async function computeDailyGrammarPick(seedDate: string): Promise<string | null> {
   const store = getStoreSync();
   if (store.grammar.length === 0) return null;
 
@@ -524,7 +546,11 @@ export async function getDailyGrammarPick(seedDate: string = getStudyDate()): Pr
 
   const testedEnough = [...grammarStates.values()].filter((w) => w.seen >= WEAK_MIN_SEEN);
   if (testedEnough.length > 0) {
-    return testedEnough.sort((a, b) => a.mastery - b.mastery)[0]!.id;
+    const weakestPool = testedEnough
+      .sort((a, b) => a.mastery - b.mastery)
+      .slice(0, DAILY_GRAMMAR_WEAK_POOL_SIZE);
+    const index = Math.floor(seededRandom(seedDate) * weakestPool.length);
+    return weakestPool[index]!.id;
   }
 
   const byMasteryAsc = [...grammarStates.values()].sort((a, b) => a.mastery - b.mastery);

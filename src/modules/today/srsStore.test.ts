@@ -391,15 +391,50 @@ describe("getDailyGrammarPick", () => {
     // g-5: only touched once and got it wrong (seen=1, mastery=0) - lower raw
     // mastery than g-2, but must NOT win since it hasn't been tested enough.
     await recordAnswer("grammar", "g-5", false, "quiz");
-    // everyone else is well-tested and doing fine, so not competitive either way.
+    // Everyone else stays under seen>=3 too (only 2 answers each), so g-2 is
+    // the *only* entry eligible for tier 2 - keeps this test independent of
+    // tier 2's own "random pick among the weakest pool" behavior.
     for (const g of grammar) {
       if (g.id !== "g-2" && g.id !== "g-5") {
-        await recordAnswer("grammar", g.id, true, "quiz");
         await recordAnswer("grammar", g.id, true, "quiz");
         await recordAnswer("grammar", g.id, true, "quiz");
       }
     }
     expect(await getDailyGrammarPick("2026-07-10")).toBe("g-2");
+  });
+
+  it("varies which weak-spot entry is picked across days instead of always the single worst one", async () => {
+    for (const g of grammar) {
+      await touchWord("grammar", g.id);
+    }
+    // Give all 6 entries seen>=3 with a spread of masteries, so tier 2's pool
+    // has several eligible candidates (not just one clear winner).
+    for (let i = 0; i < grammar.length; i++) {
+      const wrongCount = i; // g-0: 0 wrong (mastery 1) ... g-5: 3 wrong (mastery 0)
+      for (let j = 0; j < 3; j++) {
+        await recordAnswer("grammar", grammar[i]!.id, j >= wrongCount, "quiz");
+      }
+    }
+    const picks = new Set<string | null>();
+    for (let d = 1; d <= 15; d++) {
+      picks.add(await getDailyGrammarPick(`2026-02-${String(d).padStart(2, "0")}`));
+    }
+    expect(picks.size).toBeGreaterThan(1);
+  });
+
+  it("keeps returning today's already-locked-in pick even after later touches shrink the candidate pool", async () => {
+    const picked = await getDailyGrammarPick("2026-07-10");
+    expect(picked).not.toBeNull();
+    // Touching the picked entry itself (e.g. the user reading it) used to
+    // shrink `untouched` and shift the seeded index against the smaller
+    // pool, silently changing "today's" result mid-day.
+    await touchWord("grammar", picked!);
+    expect(await getDailyGrammarPick("2026-07-10")).toBe(picked);
+
+    // Touching a completely different entry must not change it either.
+    const other = grammar.find((g) => g.id !== picked)!.id;
+    await touchWord("grammar", other);
+    expect(await getDailyGrammarPick("2026-07-10")).toBe(picked);
   });
 
   it("falls back to raw lowest mastery when nothing has reached seen>=3 yet", async () => {
