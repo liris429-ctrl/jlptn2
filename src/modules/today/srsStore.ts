@@ -470,8 +470,19 @@ function seededRandom(seed: string): number {
 /**
  * Milestone 3's 每日一文法卡: a deterministic per-day pick (seeded by the
  * study date, so it doesn't change on every re-render/reload within the same
- * day) from grammar with no wordState record yet; once every grammar entry
- * has been touched, falls back to the single lowest-mastery one instead.
+ * day), in three priority tiers:
+ *   1. Grammar never touched at all - "每天滴灌一條沒看過的文法" is this
+ *      feature's actual purpose, not a fallback, so untouched grammar always
+ *      wins while any exists.
+ *   2. Once every grammar point has been touched, surface a genuine weak
+ *      spot - but only among entries tested enough times (seen >= 3, same
+ *      threshold as getWeakWords) for `mastery` to mean anything. Without
+ *      this a single wrong first look (seen=1, mastery=0) would permanently
+ *      dominate this ranking over words that are actually chronically weak.
+ *   3. Last resort, when everything is touched but nothing has reached
+ *      seen >= 3 yet (e.g. right after a fresh start): fall back to raw
+ *      lowest mastery across all touched entries, so this still returns a
+ *      real pick instead of null.
  */
 export async function getDailyGrammarPick(seedDate: string = getStudyDate()): Promise<string | null> {
   const store = getStoreSync();
@@ -484,6 +495,11 @@ export async function getDailyGrammarPick(seedDate: string = getStudyDate()): Pr
   if (untouched.length > 0) {
     const index = Math.floor(seededRandom(seedDate) * untouched.length);
     return untouched[index]!.id;
+  }
+
+  const testedEnough = [...grammarStates.values()].filter((w) => w.seen >= WEAK_MIN_SEEN);
+  if (testedEnough.length > 0) {
+    return testedEnough.sort((a, b) => a.mastery - b.mastery)[0]!.id;
   }
 
   const byMasteryAsc = [...grammarStates.values()].sort((a, b) => a.mastery - b.mastery);

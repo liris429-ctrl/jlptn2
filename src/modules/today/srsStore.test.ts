@@ -337,6 +337,42 @@ describe("getDailyGrammarPick", () => {
     }
     expect(await getDailyGrammarPick("2026-07-10")).toBe("g-2");
   });
+
+  it("ignores a seen<3 fluke's raw-zero mastery in favor of a genuinely tested weak entry", async () => {
+    for (const g of grammar) {
+      await touchWord("grammar", g.id);
+    }
+    // g-2: chronically weak - tested enough (seen=5), mastery=0.2.
+    for (let i = 0; i < 4; i++) await recordAnswer("grammar", "g-2", false, "quiz");
+    await recordAnswer("grammar", "g-2", true, "quiz");
+    // g-5: only touched once and got it wrong (seen=1, mastery=0) - lower raw
+    // mastery than g-2, but must NOT win since it hasn't been tested enough.
+    await recordAnswer("grammar", "g-5", false, "quiz");
+    // everyone else is well-tested and doing fine, so not competitive either way.
+    for (const g of grammar) {
+      if (g.id !== "g-2" && g.id !== "g-5") {
+        await recordAnswer("grammar", g.id, true, "quiz");
+        await recordAnswer("grammar", g.id, true, "quiz");
+        await recordAnswer("grammar", g.id, true, "quiz");
+      }
+    }
+    expect(await getDailyGrammarPick("2026-07-10")).toBe("g-2");
+  });
+
+  it("falls back to raw lowest mastery when nothing has reached seen>=3 yet", async () => {
+    for (const g of grammar) {
+      await touchWord("grammar", g.id);
+    }
+    // Everything is touched (no untouched tier), but every entry is under the
+    // seen>=3 threshold - the tier-2 weak-spot set is empty, so this must
+    // still return a real pick (tier 3) instead of null.
+    await recordAnswer("grammar", "g-2", false, "quiz");
+    await recordAnswer("grammar", "g-2", false, "quiz"); // seen=2, mastery=0
+    for (const g of grammar) {
+      if (g.id !== "g-2") await recordAnswer("grammar", g.id, true, "quiz"); // seen=1, mastery=1
+    }
+    expect(await getDailyGrammarPick("2026-07-10")).toBe("g-2");
+  });
 });
 
 describe("exportAllData", () => {
