@@ -14,7 +14,7 @@ import { renderQuizView } from "./modules/quiz/quizView.ts";
 import "./modules/quiz/quiz.css";
 import "./modules/search/search.css";
 import { renderTodayView } from "./modules/today/todayView.ts";
-import { renderTodayQuizView } from "./modules/today/todayQuizView.ts";
+import { renderTodayQuizView, renderYesterdayReviewView } from "./modules/today/todayQuizView.ts";
 import { openDb } from "./modules/today/db.ts";
 import "./modules/today/today.css";
 import { navigate, registerRoute, startRouter } from "./router.ts";
@@ -104,6 +104,10 @@ async function main(): Promise<void> {
   registerRoute("/today/quiz", () => {
     setActiveTab("today");
     renderTodayQuizView(view);
+  });
+  registerRoute("/today/quiz/yesterday", () => {
+    setActiveTab("today");
+    renderYesterdayReviewView(view);
   });
   registerRoute("/grammar", () => {
     setActiveTab("grammar");

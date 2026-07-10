@@ -198,3 +198,26 @@ describe("TodayQuizEngine.retryWrongOnly", () => {
     expect(latest.answers).toHaveLength(0);
   });
 });
+
+describe("TodayQuizEngine.startWithWords", () => {
+  it("builds questions for exactly the given word list, with no ratio or grammar-minimum rules applied", () => {
+    const engine = new TodayQuizEngine();
+    engine.startWithWords([
+      { kind: "vocab", id: "v-0" },
+      { kind: "vocab", id: "v-1" },
+    ]);
+    let latest: any;
+    engine.subscribe((s) => (latest = s));
+    expect(latest.phase).toBe("playing");
+    expect(latest.questions.map((q: { id: string }) => q.id).sort()).toEqual(["v-0", "v-1"]);
+    expect(drawTodayPoolMock).not.toHaveBeenCalled();
+  });
+
+  it("goes straight to finished when given an empty list", () => {
+    const engine = new TodayQuizEngine();
+    engine.startWithWords([]);
+    let latest: any;
+    engine.subscribe((s) => (latest = s));
+    expect(latest.phase).toBe("finished");
+  });
+});

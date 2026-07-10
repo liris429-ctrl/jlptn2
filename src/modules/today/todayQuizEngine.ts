@@ -210,6 +210,17 @@ export class TodayQuizEngine {
     this.emit();
   }
 
+  /**
+   * Quizzes exactly this word list, in shuffled order - no pool-ratio rules,
+   * no grammar minimum, no 10-question cap. Used by milestone 3's 昨夜複習
+   * mini-quiz ("只考那批,寫入 source=quiz"), which the view still records
+   * through the normal recordAnswer(..., "quiz") path in selectOption().
+   */
+  startWithWords(words: DrawnWord[]): void {
+    const questions = shuffle(words).map(buildQuestion).filter((q): q is TodayQuestion => q !== null);
+    this.loadQuestions(questions);
+  }
+
   /** Grades immediately (no separate confirm step), records the answer, and
    * auto-advances after 600ms. */
   selectOption(index: number): void {

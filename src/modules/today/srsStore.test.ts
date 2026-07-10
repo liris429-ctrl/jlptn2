@@ -32,10 +32,14 @@ const {
   touchWord,
   getDueCount,
   getWeakCount,
+  getNewCount,
   getRecentWrongEntries,
+  getYesterdayNewWords,
   getStreak,
   getWeekSummary,
   drawTodayPool,
+  getDailyGrammarPick,
+  exportAllData,
   setMeta,
   getMeta,
 } = await import("./srsStore.ts");
@@ -264,5 +268,70 @@ describe("meta", () => {
     expect(await getMeta("examDate")).toBeUndefined();
     await setMeta("examDate", "2026-12-06");
     expect(await getMeta("examDate")).toBe("2026-12-06");
+  });
+});
+
+describe("getNewCount", () => {
+  it("matches the size of drawTodayPool's new-word candidate set", async () => {
+    const countAll = await getNewCount();
+    expect(countAll).toBe(grammar.length + vocab.length);
+
+    await touchWord("vocab", "v-0");
+    expect(await getNewCount()).toBe(countAll - 1);
+  });
+
+  it("respects learnedUpTo the same way drawTodayPool does", async () => {
+    const count = await getNewCount(2);
+    // only g-0/g-1 grammar (第1課/第2課) qualify, plus all 6 vocab (no lesson data)
+    expect(count).toBe(2 + vocab.length);
+  });
+});
+
+describe("getYesterdayNewWords", () => {
+  it("only includes words first seen yesterday with at least one real event", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 9, 12, 0));
+    await recordAnswer("vocab", "v-0", true, "quiz"); // firstSeenAt yesterday, has a real event
+    await touchWord("vocab", "v-1"); // firstSeenAt yesterday, but only ever browsed - excluded
+
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 10, 12, 0));
+    await touchWord("vocab", "v-2"); // firstSeenAt today - not "yesterday"
+
+    const words = await getYesterdayNewWords();
+    expect(words.map((w) => w.id)).toEqual(["v-0"]);
+    vi.restoreAllMocks();
+  });
+});
+
+describe("getDailyGrammarPick", () => {
+  it("picks the same grammar entry for the same seed date, from untouched entries", async () => {
+    const a = await getDailyGrammarPick("2026-07-10");
+    const b = await getDailyGrammarPick("2026-07-10");
+    expect(a).toBe(b);
+    expect(["g-0", "g-1", "g-2", "g-3", "g-4", "g-5"]).toContain(a);
+  });
+
+  it("falls back to the lowest-mastery grammar entry once all are touched", async () => {
+    for (const g of grammar) {
+      await touchWord("grammar", g.id);
+    }
+    // make g-2 the clear lowest mastery
+    await recordAnswer("grammar", "g-2", false, "quiz");
+    await recordAnswer("grammar", "g-2", false, "quiz");
+    for (const g of grammar) {
+      if (g.id !== "g-2") await recordAnswer("grammar", g.id, true, "quiz");
+    }
+    expect(await getDailyGrammarPick("2026-07-10")).toBe("g-2");
+  });
+});
+
+describe("exportAllData", () => {
+  it("serializes all three stores", async () => {
+    await recordAnswer("vocab", "v-0", true, "quiz");
+    await setMeta("examDate", "2026-12-06");
+    const backup = await exportAllData();
+    expect(backup.wordState).toHaveLength(1);
+    expect(backup.dailyStats).toHaveLength(1);
+    expect(backup.meta).toEqual([{ key: "examDate", value: "2026-12-06" }]);
+    expect(typeof backup.exportedAt).toBe("number");
   });
 });

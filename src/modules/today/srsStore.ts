@@ -357,26 +357,12 @@ function grammarLessonNumber(entry: GrammarEntry): number | null {
   return match ? Number.parseInt(match[1]!, 10) : null;
 }
 
-/**
- * Draws up to `counts.review`/`counts.weak`/`counts.new` candidates from three
- * disjoint pools (a word picked for one pool is excluded from the others, so
- * the same word never appears twice - "同一詞不會重複"). `learnedUpTo` scopes
- * the new-word pool to grammar entries within that lesson number; vocab has no
- * lesson data since the v9 source switch, so its new-word pool falls back to
- * jlptLevel === "N2" (this app's core level) instead.
- */
-export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): Promise<DrawnPools> {
-  const usedKeys = new Set<string>();
-
-  const dueRange = IDBKeyRange.upperBound(getStudyDate());
-  const dueWords = await dbGetAllByIndexRange<WordState>(STORE_WORD_STATE, "srsDue", dueRange);
-  const reviewPicks = sample(dueWords, Math.min(counts.review, dueWords.length));
-  for (const w of reviewPicks) usedKeys.add(w.key);
-
-  const weakCandidates = (await getWeakWords()).filter((w) => !usedKeys.has(w.key));
-  const weakPicks = sample(weakCandidates, Math.min(counts.weak, weakCandidates.length));
-  for (const w of weakPicks) usedKeys.add(w.key);
-
+/** Vocab/grammar entries with no wordState record at all, scoped to
+ * `learnedUpTo` (grammar lesson number) - vocab has no lesson data since the
+ * v9 source switch, so its new-word pool falls back to jlptLevel === "N2"
+ * (this app's core level) instead. Shared by drawTodayPool (sampling) and
+ * getNewCount (just the size) so the scoping rule only lives in one place. */
+async function getNewCandidates(learnedUpTo?: number): Promise<DrawnWord[]> {
   const allWordStates = await dbGetAll<WordState>(STORE_WORD_STATE);
   const knownKeys = new Set(allWordStates.map((w) => w.key));
   const store = getStoreSync();
@@ -395,7 +381,31 @@ export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): P
     .filter((v) => !knownKeys.has(makeKey("vocab", v.id)))
     .map((v) => ({ kind: "vocab", id: v.id }));
 
-  const newCandidates = [...newGrammarCandidates, ...newVocabCandidates].filter(
+  return [...newGrammarCandidates, ...newVocabCandidates];
+}
+
+export async function getNewCount(learnedUpTo?: number): Promise<number> {
+  return (await getNewCandidates(learnedUpTo)).length;
+}
+
+/**
+ * Draws up to `counts.review`/`counts.weak`/`counts.new` candidates from three
+ * disjoint pools (a word picked for one pool is excluded from the others, so
+ * the same word never appears twice - "同一詞不會重複").
+ */
+export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): Promise<DrawnPools> {
+  const usedKeys = new Set<string>();
+
+  const dueRange = IDBKeyRange.upperBound(getStudyDate());
+  const dueWords = await dbGetAllByIndexRange<WordState>(STORE_WORD_STATE, "srsDue", dueRange);
+  const reviewPicks = sample(dueWords, Math.min(counts.review, dueWords.length));
+  for (const w of reviewPicks) usedKeys.add(w.key);
+
+  const weakCandidates = (await getWeakWords()).filter((w) => !usedKeys.has(w.key));
+  const weakPicks = sample(weakCandidates, Math.min(counts.weak, weakCandidates.length));
+  for (const w of weakPicks) usedKeys.add(w.key);
+
+  const newCandidates = (await getNewCandidates(learnedUpTo)).filter(
     (c) => !usedKeys.has(makeKey(c.kind, c.id)),
   );
   const newPicks = sample(newCandidates, Math.min(counts.new, newCandidates.length));
@@ -405,4 +415,67 @@ export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): P
     weak: weakPicks.map((w) => ({ kind: w.kind, id: w.id })),
     new: newPicks,
   };
+}
+
+/**
+ * Words first seen yesterday (milestone 3's "昨夜複習"), excluding ones whose
+ * only interaction so far was a passive touchWord() browse (recent.length===0
+ * - never an actual quiz/anki event) - the spec's "排除首次事件在低分（含
+ * lookup來源）的詞" filter. touchWord() never pushes a `recent` entry, so an
+ * empty `recent` array is exactly "looked at but never really tested".
+ */
+export async function getYesterdayNewWords(): Promise<WordState[]> {
+  const yesterday = addDays(getStudyDate(), -1);
+  const allWords = await dbGetAll<WordState>(STORE_WORD_STATE);
+  return allWords.filter((w) => getStudyDate(w.firstSeenAt) === yesterday && w.recent.length > 0);
+}
+
+function seededRandom(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+  let t = (h ^ 0x9e3779b9) >>> 0;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/**
+ * Milestone 3's 每日一文法卡: a deterministic per-day pick (seeded by the
+ * study date, so it doesn't change on every re-render/reload within the same
+ * day) from grammar with no wordState record yet; once every grammar entry
+ * has been touched, falls back to the single lowest-mastery one instead.
+ */
+export async function getDailyGrammarPick(seedDate: string = getStudyDate()): Promise<string | null> {
+  const store = getStoreSync();
+  if (store.grammar.length === 0) return null;
+
+  const allWords = await dbGetAll<WordState>(STORE_WORD_STATE);
+  const grammarStates = new Map(allWords.filter((w) => w.kind === "grammar").map((w) => [w.id, w]));
+
+  const untouched = store.grammar.filter((g) => !grammarStates.has(g.id));
+  if (untouched.length > 0) {
+    const index = Math.floor(seededRandom(seedDate) * untouched.length);
+    return untouched[index]!.id;
+  }
+
+  const byMasteryAsc = [...grammarStates.values()].sort((a, b) => a.mastery - b.mastery);
+  return byMasteryAsc[0]?.id ?? null;
+}
+
+export interface SrsBackup {
+  exportedAt: number;
+  wordState: WordState[];
+  dailyStats: DailyStats[];
+  meta: { key: string; value: unknown }[];
+}
+
+/** Serializes all three stores for a local export - no server, just a
+ * downloadable snapshot the caller turns into a file (see todayView.ts). */
+export async function exportAllData(): Promise<SrsBackup> {
+  const [wordState, dailyStats, meta] = await Promise.all([
+    dbGetAll<WordState>(STORE_WORD_STATE),
+    dbGetAll<DailyStats>(STORE_DAILY_STATS),
+    dbGetAll<{ key: string; value: unknown }>(STORE_META),
+  ]);
+  return { exportedAt: Date.now(), wordState, dailyStats, meta };
 }

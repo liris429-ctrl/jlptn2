@@ -5,10 +5,26 @@
 }
 
 .today-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   background: color-mix(in srgb, var(--ink) 6%, var(--paper-raised));
   border-radius: var(--radius-panel);
   padding: var(--space-3) var(--space-4);
   color: var(--ink-soft);
+  font-size: var(--text-caption);
+}
+
+.today-banner > span:first-child {
+  flex: 1;
+}
+
+.today-banner-action {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
   font-size: var(--text-caption);
 }
 
@@ -85,7 +101,47 @@
 }
 
 .today-section-title {
+  margin: 0 0 var(--space-1);
+}
+
+.today-section-hint {
+  color: var(--ink-faint);
+  font-size: var(--text-tag);
+  letter-spacing: 0.04em;
   margin: 0 0 var(--space-3);
+}
+
+/* Milestone 3's 昨夜複習 entry point - a lone secondary card, deliberately
+   plain (border only, no accent) so it doesn't compete with the main CTA. */
+.today-secondary-row {
+  display: flex;
+}
+
+.today-secondary-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--paper-raised);
+  padding: var(--space-3) var(--space-4);
+  transition: border-color 0.18s ease, box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.today-secondary-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-1);
+}
+
+.today-secondary-title {
+  font-weight: 600;
+}
+
+.today-secondary-sub {
+  color: var(--ink-faint);
+  font-size: var(--text-caption);
 }
 
 .today-wrong-list {
@@ -143,20 +199,65 @@
   flex-shrink: 0;
 }
 
+.today-wrong-reveal-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+
 .today-wrong-reveal {
+  flex: 1;
+  min-width: 0;
   color: var(--ink-soft);
   font-size: var(--text-caption);
 }
 
-.today-wrong-hint {
-  color: var(--ink-faint);
+/* An explicit pill affordance (not just "tap the revealed text") so the
+   self-grade gesture is discoverable, not guessed at. Success-tinted since
+   tapping it is a positive self-report ("I remembered"), consistent with
+   --success being reserved for outcome feedback (tokens.css). */
+.today-wrong-remember {
+  flex-shrink: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: none;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--text-tag);
+  color: var(--success);
+}
+
+.today-wrong-remember:hover:not(:disabled) {
+  border-color: var(--success);
 }
 
 .today-empty {
   color: var(--ink-faint);
   text-align: center;
   padding: var(--space-6) 0;
+}
+
+/* Left accent stripe (not a full border+shadow) - this is a single daily
+   pick to read, not a primary action, so it stays in the "flat info" card
+   family rather than the "interactive CTA" one. */
+.today-daily-grammar-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-input);
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+}
+
+.today-daily-grammar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
 }
 
 .today-stats {
@@ -172,7 +273,7 @@
 
 .today-accuracy-cell {
   flex: 1;
-  height: 20px;
+  aspect-ratio: 1;
   border-radius: 3px;
   background: var(--line);
 }

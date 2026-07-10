@@ -1,9 +1,13 @@
 import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
-import { getStreak } from "./srsStore.ts";
+import { getStreak, getYesterdayNewWords } from "./srsStore.ts";
 import { TodayQuizEngine, type TodayQuizState } from "./todayQuizEngine.ts";
 
-export function renderTodayQuizView(container: HTMLElement): void {
+function mountQuizView(
+  container: HTMLElement,
+  title: string,
+  start: (engine: TodayQuizEngine) => void | Promise<void>,
+): void {
   container.innerHTML = "";
   const engine = new TodayQuizEngine();
   const page = el("div", { className: "quiz-page" });
@@ -12,13 +16,13 @@ export function renderTodayQuizView(container: HTMLElement): void {
   const unsubscribe = engine.subscribe((state) => {
     page.innerHTML = "";
     if (state.phase === "playing" && state.questions.length === 0) {
-      page.append(el("p", { className: "quiz-hint" }, ["正在準備今天的題目…"]));
+      page.append(el("p", { className: "quiz-hint" }, ["正在準備題目…"]));
       return;
     }
-    page.append(state.phase === "playing" ? renderPlaying(state, engine) : renderFinished(state, engine));
+    page.append(state.phase === "playing" ? renderPlaying(state, engine) : renderFinished(state, engine, title));
   });
 
-  void engine.start();
+  void start(engine);
 
   // Deliberately no setNavigationGuard/beforeunload here (unlike the older
   // 實戰考題 quizView.ts): every answer is already durably written via
@@ -30,6 +34,21 @@ export function renderTodayQuizView(container: HTMLElement): void {
     window.removeEventListener("hashchange", cleanup);
   };
   window.addEventListener("hashchange", cleanup, { once: true });
+}
+
+export function renderTodayQuizView(container: HTMLElement): void {
+  mountQuizView(container, "今天的10題", (engine) => engine.start());
+}
+
+/** Milestone 3's 昨夜複習 mini-quiz: only the previous day's genuinely-tested
+ * new words (see getYesterdayNewWords' lookup-only filter), no pool ratio or
+ * grammar-minimum rules, answers still flow through the normal source="quiz"
+ * recordAnswer path inside selectOption(). */
+export function renderYesterdayReviewView(container: HTMLElement): void {
+  mountQuizView(container, "昨夜複習", async (engine) => {
+    const words = await getYesterdayNewWords();
+    engine.startWithWords(words.map((w) => ({ kind: w.kind, id: w.id })));
+  });
 }
 
 function renderPlaying(state: TodayQuizState, engine: TodayQuizEngine): HTMLElement {
@@ -68,7 +87,7 @@ function renderPlaying(state: TodayQuizState, engine: TodayQuizEngine): HTMLElem
   return el("div", { className: "quiz-playing" }, children);
 }
 
-function renderFinished(state: TodayQuizState, engine: TodayQuizEngine): HTMLElement {
+function renderFinished(state: TodayQuizState, engine: TodayQuizEngine, title: string): HTMLElement {
   const correctCount = state.answers.filter((a) => a.correct).length;
   const total = state.answers.length;
   const wrongAnswers = state.answers.filter((a) => !a.correct);
@@ -83,7 +102,7 @@ function renderFinished(state: TodayQuizState, engine: TodayQuizEngine): HTMLEle
   backBtn.addEventListener("click", () => navigate("/today"));
 
   const children: (Node | string)[] = [
-    el("h1", {}, ["今天的10題"]),
+    el("h1", {}, [title]),
     el("p", { className: "quiz-score" }, [`${total} 題中答對 ${correctCount} 題`]),
     streakEl,
   ];
