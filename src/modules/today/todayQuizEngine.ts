@@ -192,15 +192,14 @@ export class TodayQuizEngine {
 
     const questions = drawn.map(buildQuestion).filter((q): q is TodayQuestion => q !== null);
 
-    this.clearTimer();
-    this.state = {
-      phase: "playing",
-      questions,
-      currentIndex: 0,
-      selectedIndex: null,
-      answers: [],
-    };
-    this.emit();
+    // A "playing" phase with 0 questions is indistinguishable from the
+    // engine's pre-start() initial state to the view (see todayQuizView.ts's
+    // "still preparing" check) - if the pool genuinely comes up empty (or
+    // every drawn id fails to resolve against the current vocab/grammar
+    // data), that used to render as a permanently stuck loading screen
+    // instead of a real "nothing to quiz" result. loadQuestions() already
+    // got this right; start() didn't.
+    this.loadQuestions(questions);
   }
 
   /** Loads a fixed set of questions directly - used by retryWrongOnly() and tests. */

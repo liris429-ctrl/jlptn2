@@ -22,7 +22,16 @@ function mountQuizView(
     page.append(state.phase === "playing" ? renderPlaying(state, engine) : renderFinished(state, engine, title));
   });
 
-  void start(engine);
+  // Without this, an unexpected failure (e.g. IndexedDB error) would leave
+  // the "正在準備題目…" hint above showing forever with no feedback - the
+  // engine never gets a chance to emit a real state past its initial one.
+  Promise.resolve(start(engine)).catch((err: unknown) => {
+    console.error(err);
+    page.innerHTML = "";
+    page.append(
+      el("p", { className: "quiz-hint" }, ["題目準備失敗，請返回今日重新整理再試一次。"]),
+    );
+  });
 
   // Deliberately no setNavigationGuard/beforeunload here (unlike the older
   // 實戰考題 quizView.ts): every answer is already durably written via
@@ -92,14 +101,26 @@ function renderFinished(state: TodayQuizState, engine: TodayQuizEngine, title: s
   const total = state.answers.length;
   const wrongAnswers = state.answers.filter((a) => !a.correct);
 
+  const backBtn = el("button", { className: "btn btn--primary", type: "button" }, ["回今日"]);
+  backBtn.addEventListener("click", () => navigate("/today"));
+
+  // The round genuinely had nothing to quiz (empty pool, or every drawn id
+  // failed to resolve) - distinct from "answered 0 of a real round", which
+  // can't happen since selectOption() is the only way to reach "finished"
+  // with questions.length > 0.
+  if (state.questions.length === 0) {
+    return el("div", { className: "quiz-finished" }, [
+      el("h1", {}, [title]),
+      el("p", { className: "quiz-hint" }, ["目前沒有可出的題目，去瀏覽幾個單字或文法後再回來試試。"]),
+      backBtn,
+    ]);
+  }
+
   const streakEl = el("p", { className: "quiz-accuracy" }, ["連續天數更新中…"]);
   void getStreak().then((streak) => {
     streakEl.textContent = `連續 ${streak} 天`;
     streakEl.classList.add("today-streak--fresh");
   });
-
-  const backBtn = el("button", { className: "btn btn--primary", type: "button" }, ["回今日"]);
-  backBtn.addEventListener("click", () => navigate("/today"));
 
   const children: (Node | string)[] = [
     el("h1", {}, [title]),

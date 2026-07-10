@@ -120,6 +120,40 @@ describe("TodayQuizEngine.start", () => {
     const grammarCount = latest.questions.filter((q: { kind: string }) => q.kind === "grammar").length;
     expect(grammarCount).toBeGreaterThanOrEqual(2);
   });
+
+  it("goes to finished (not stuck in playing) when the pool comes up empty", async () => {
+    // Regression test: start() used to hard-code phase: "playing" regardless
+    // of how many questions actually got built, which the view can't tell
+    // apart from "hasn't started yet" - an empty pool rendered as a
+    // permanently stuck loading screen instead of a real result.
+    drawTodayPoolMock.mockResolvedValue({ review: [], weak: [], new: [] });
+    const engine = new TodayQuizEngine();
+    await engine.start();
+    let latest: any;
+    engine.subscribe((s) => (latest = s));
+    expect(latest.phase).toBe("finished");
+    expect(latest.questions).toHaveLength(0);
+  });
+
+  it("goes to finished when every drawn id fails to resolve against the current data", async () => {
+    // Two bogus grammar ids already meet MIN_GRAMMAR_QUESTIONS, so
+    // enforceGrammarMinimum doesn't top up with real (resolvable) grammar
+    // entries - buildQuestion() then legitimately produces zero questions.
+    drawTodayPoolMock.mockResolvedValue({
+      review: [
+        { kind: "grammar", id: "g-does-not-exist-1" },
+        { kind: "grammar", id: "g-does-not-exist-2" },
+      ],
+      weak: [],
+      new: [],
+    });
+    const engine = new TodayQuizEngine();
+    await engine.start();
+    let latest: any;
+    engine.subscribe((s) => (latest = s));
+    expect(latest.phase).toBe("finished");
+    expect(latest.questions).toHaveLength(0);
+  });
 });
 
 describe("TodayQuizEngine.selectOption", () => {
