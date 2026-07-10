@@ -357,7 +357,7 @@
   gap: var(--space-2);
 }
 
-.today-accuracy-bar {
+.today-activity-bar {
   display: flex;
   gap: 2px;
 }
@@ -366,22 +366,22 @@
    square each, --radius-tag (6px) would read as noticeably rounded on a cell
    this small - this is corner-softening only, same spirit as a heatmap/
    contribution-graph cell. */
-.today-accuracy-cell {
+.today-activity-cell {
   flex: 1;
   aspect-ratio: 1;
   border-radius: 3px;
   background: var(--line);
 }
 
-.today-accuracy-cell--tier1 {
+.today-activity-cell--tier1 {
   background: color-mix(in srgb, var(--accent) 30%, var(--line));
 }
 
-.today-accuracy-cell--tier2 {
+.today-activity-cell--tier2 {
   background: color-mix(in srgb, var(--accent) 60%, var(--line));
 }
 
-.today-accuracy-cell--tier3 {
+.today-activity-cell--tier3 {
   background: var(--accent);
 }
 

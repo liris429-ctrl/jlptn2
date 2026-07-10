@@ -61,7 +61,7 @@ interface TodayData {
   recentWrong: WordState[];
   yesterdayNewCount: number;
   dailyGrammarId: string | null;
-  accuracyDays: { date: string; stats: DailyStats | undefined }[];
+  activityDays: { date: string; stats: DailyStats | undefined }[];
   streak: number;
   week: WeekSummary;
   streakBroken: boolean;
@@ -97,10 +97,10 @@ async function loadTodayData(): Promise<TodayData> {
   ]);
 
   const statsByDate = new Map(statsRange.map((s) => [s.date, s]));
-  const accuracyDays: { date: string; stats: DailyStats | undefined }[] = [];
+  const activityDays: { date: string; stats: DailyStats | undefined }[] = [];
   for (let i = ACCURACY_BAR_DAYS - 1; i >= 0; i--) {
     const date = addDaysLocal(today, -i);
-    accuracyDays.push({ date, stats: statsByDate.get(date) });
+    activityDays.push({ date, stats: statsByDate.get(date) });
   }
 
   const yesterday = statsByDate.get(addDaysLocal(today, -1));
@@ -121,7 +121,7 @@ async function loadTodayData(): Promise<TodayData> {
     recentWrong,
     yesterdayNewCount: yesterdayNew.length,
     dailyGrammarId,
-    accuracyDays,
+    activityDays,
     streak,
     week,
     streakBroken,
@@ -462,19 +462,19 @@ function renderDailyGrammarSection(data: TodayData): HTMLElement | null {
   return el("section", {}, [el("h2", { className: "today-section-title" }, ["每日一文法"]), card]);
 }
 
-function accuracyTier(stats: DailyStats | undefined): string {
+function activityTier(stats: DailyStats | undefined): string {
   const answered = stats?.answered ?? 0;
   if (answered === 0) return "";
-  if (answered < 10) return " today-accuracy-cell--tier1";
-  if (answered < 20) return " today-accuracy-cell--tier2";
-  return " today-accuracy-cell--tier3";
+  if (answered < 10) return " today-activity-cell--tier1";
+  if (answered < 15) return " today-activity-cell--tier2";
+  return " today-activity-cell--tier3";
 }
 
 function renderStatsSection(data: TodayData): HTMLElement {
   const bar = el(
     "div",
-    { className: "today-accuracy-bar" },
-    data.accuracyDays.map((d) => el("span", { className: `today-accuracy-cell${accuracyTier(d.stats)}` })),
+    { className: "today-activity-bar" },
+    data.activityDays.map((d) => el("span", { className: `today-activity-cell${activityTier(d.stats)}` })),
   );
 
   const streakText = data.streak > 0 ? `學習紀錄・連續 ${data.streak} 天 🔥` : "學習紀錄・尚未開始連續紀錄";
