@@ -77,12 +77,12 @@
   gap: 2px;
 }
 
-/* 1.25rem, not --text-headline: this is a compact page label (same size the
-   old shared app-header's title used before it was removed), not a content
-   headline like the vocab/grammar word or the quiz result title. */
+/* 1.5rem, not --text-headline (2rem): this is the page's H1 tier (24px) per
+   the type-scale audit, still smaller than a content headline like the
+   vocab/grammar word or the quiz result title. */
 .today-greeting h1 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
 }
 
 .today-greeting-sub {
@@ -101,8 +101,7 @@
 }
 
 .today-countdown-days {
-  font-family: var(--font-jp-serif);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
@@ -159,26 +158,26 @@
 
 .today-task-count {
   margin: 0;
-  font-family: var(--font-jp-serif);
   color: var(--ink);
 }
 
 .today-task-count-number {
   font-size: 2.5rem;
   font-weight: 700;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 .today-task-count-prefix,
 .today-task-count-suffix {
-  font-size: var(--text-body);
+  font-size: var(--text-section);
   font-weight: 400;
   color: var(--ink-soft);
 }
 
 .today-task-dots {
   display: flex;
-  gap: 5px;
+  gap: var(--space-2);
 }
 
 .today-task-dot {
@@ -207,7 +206,7 @@
   border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--paper-raised);
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-body);
   padding: var(--space-2) var(--space-4);
   transition: transform 0.12s ease;
@@ -378,7 +377,8 @@
 
 .today-weak-title {
   margin: 0;
-  font-weight: 700;
+  font-size: var(--text-section);
+  font-weight: 600;
 }
 
 .today-weak-subtitle {
@@ -428,7 +428,7 @@
 
 .today-weak-item-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2);
   /* Tighter than the inherited body line-height (1.7) - this is a compact
      list row, not prose; 1.7 was adding height with no readability gain
@@ -449,8 +449,8 @@
 
 .today-weak-primary {
   font-family: var(--font-jp-serif);
-  font-weight: 700;
-  font-size: var(--text-section);
+  font-weight: 600;
+  font-size: var(--text-body);
   color: var(--ink);
   word-break: keep-all;
   overflow-wrap: anywhere;
@@ -560,7 +560,7 @@
    is a single daily read, not a list item competing for scan-attention. */
 .today-daily-grammar-pattern {
   font-family: var(--font-jp-serif);
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-body);
   word-break: keep-all;
   overflow-wrap: anywhere;
@@ -596,7 +596,7 @@
   border: none;
   padding: 0;
   border-radius: 3px;
-  background: var(--line);
+  background: var(--line-strong);
 }
 
 .today-activity-cell--tier1 {
