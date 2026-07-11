@@ -217,6 +217,33 @@ describe("TodayQuizEngine.start", () => {
     expect(resumedState.answers).toHaveLength(1);
     expect(drawTodayPoolMock).not.toHaveBeenCalled();
   });
+
+  // Regression: start() used to resume ANY leftover snapshot regardless of
+  // roundKind, so clicking "開始" on the home page (which always calls
+  // start()) could silently hand back an abandoned 昨夜複習/續攤 session
+  // (roundKind "extra") instead of drawing today's real main round - the
+  // symptom was "開始" turning into a 20-question round, and finishing it
+  // left the home page still showing "開始・還有10題" since only "main"
+  // rounds call recordFirstRoundResult.
+  it("ignores a leftover 'extra' snapshot and draws a fresh main round", async () => {
+    const abandoned = new TodayQuizEngine();
+    abandoned.startWithWords([
+      { kind: "vocab", id: "v-0" },
+      { kind: "vocab", id: "v-1" },
+    ]);
+    let abandonedState: any;
+    abandoned.subscribe((s) => (abandonedState = s));
+    abandoned.selectOption(abandonedState.questions[0].answerIndex);
+    expect(abandonedState.roundKind).toBe("extra");
+
+    drawTodayPoolMock.mockClear();
+    const engine = new TodayQuizEngine();
+    await engine.start();
+    let latest: any;
+    engine.subscribe((s) => (latest = s));
+    expect(latest.roundKind).toBe("main");
+    expect(drawTodayPoolMock).toHaveBeenCalled();
+  });
 });
 
 describe("TodayQuizEngine.selectOption", () => {

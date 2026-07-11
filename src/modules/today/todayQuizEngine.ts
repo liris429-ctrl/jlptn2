@@ -270,13 +270,13 @@ export class TodayQuizEngine {
   }
 
   /**
-   * Entry point for the home page's main CTA. Resumes an in-progress round
-   * from earlier today first (if any); otherwise draws round 1 ("今日十問",
-   * the fixed SRS-ratio round) if it hasn't run yet today, or transparently
-   * falls through to a weak-fill-only 續攤 round if it has - this covers a
-   * fresh engine instance being started (e.g. via direct navigation or the
-   * "已完成" card's "再練10題" link) after round 1 is already done, without
-   * the view needing to know which mode to request.
+   * Entry point for the home page's main CTA. Resumes an in-progress MAIN
+   * round from earlier today first (if any); otherwise draws round 1
+   * ("今日十問", the fixed SRS-ratio round) if it hasn't run yet today, or
+   * transparently falls through to a weak-fill-only 續攤 round if it has -
+   * this covers a fresh engine instance being started (e.g. via direct
+   * navigation or the "已完成" card's "再練10題" link) after round 1 is
+   * already done, without the view needing to know which mode to request.
    */
   async start(): Promise<void> {
     const today = getStudyDate();
@@ -284,10 +284,18 @@ export class TodayQuizEngine {
     // currentIndex is derived from answers.length (see RoundSnapshot), not
     // trusted as a separately-stored value - this is what resuming exactly
     // at "the next unanswered question" (never re-asking one already
-    // recorded) actually depends on.
+    // recorded) actually depends on. roundKind === "main" is load-bearing:
+    // without it, an abandoned 續攤 round or 昨夜複習 session (roundKind
+    // "extra", the latter with no 10-question cap - see startWithWords())
+    // left over from earlier today gets silently resumed here instead of a
+    // fresh main round starting - the "開始" button would hand back someone
+    // else's half-finished 20-question session, and finishing it never
+    // calls recordFirstRoundResult (only "main" rounds do), so the home
+    // card still shows "開始・還有10題" afterward as if nothing happened.
     if (
       snapshot != null &&
       snapshot.date === today &&
+      snapshot.roundKind === "main" &&
       snapshot.questions.length > 0 &&
       snapshot.answers.length < snapshot.questions.length
     ) {
