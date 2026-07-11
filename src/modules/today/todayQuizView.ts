@@ -47,7 +47,7 @@ function mountQuizView(
 }
 
 export function renderTodayQuizView(container: HTMLElement): void {
-  mountQuizView(container, "今天的10題", (engine) => engine.start());
+  mountQuizView(container, "今日學習任務", (engine) => engine.start());
 }
 
 /** Milestone 3's 昨夜複習 mini-quiz: only the previous day's genuinely-tested

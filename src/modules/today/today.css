@@ -73,9 +73,8 @@
 
 .today-greeting {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: 2px;
 }
 
 /* 1.25rem, not --text-headline: this is a compact page label (same size the
@@ -86,7 +85,8 @@
   font-size: 1.25rem;
 }
 
-.today-greeting-date {
+.today-greeting-sub {
+  margin: 0;
   color: var(--ink-faint);
   font-size: var(--text-caption);
 }
@@ -115,98 +115,120 @@
   font-size: var(--text-caption);
 }
 
-/* The one deliberate large-area use of --accent this page allows (see
-   tokens.css's color-semantics note + this spec's explicit carve-out for the
-   10-question main card / wrong count / selection). Everything else on this
-   page stays neutral. */
-/* The gradient/tinted-shadow treatment is this card's one deliberate flourish
-   (the spec's explicit carve-out for a large-area --accent use) - both stops
-   and the shadow tint derive from --accent via color-mix so there's still
-   only one accent color in play, not a second hardcoded hue. --space-5 doesn't
-   exist in this app's scale (was a bug - the whole padding shorthand was
-   silently invalid, rendering as 0); space-4/space-3 replace it. */
-.today-main-cta {
+/* 今日學習任務: a soft accent-tinted card (not a solid --accent fill/
+   gradient like the old design) - color now carries emphasis on the small
+   label/icon, the big remaining-count number, and the pill button, rather
+   than filling the whole card. Still only one accent hue in play, just
+   applied at low opacity via color-mix instead of a full fill. */
+.today-task-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  border: none;
   border-radius: var(--radius-panel);
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 82%, white));
-  color: var(--paper-raised);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper-raised));
   padding: var(--space-4);
-  text-align: left;
-  box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 25%, transparent);
-  transition: transform 0.12s ease, box-shadow 0.18s ease;
+  box-shadow: var(--shadow-1);
 }
 
-.today-main-cta:active {
-  transform: scale(0.99);
-}
-
-.today-main-cta-text {
+.today-task-left {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 0;
 }
 
-.today-main-cta-title {
-  font-family: var(--font-jp-serif);
-  font-size: var(--text-body);
-  font-weight: 700;
-}
-
-.today-main-cta-sub {
-  font-size: var(--text-caption);
-  opacity: 0.85;
-}
-
-/* Decorative, not a nested interactive control - the whole card is already
-   the click target (see .today-main-cta), same pattern as .hub-row-chevron. */
-.today-main-cta-start {
-  flex-shrink: 0;
-  border-radius: var(--radius-pill);
-  background: var(--paper-raised);
-  color: var(--accent-ink);
-  font-weight: 700;
-  padding: var(--space-2) var(--space-6);
-}
-
-/* 進行中: same card shape/color, this thin bar is the only new element -
-   transform (not width) for the fill, same GPU-friendly convention as
-   .game-progress-fill. */
-.today-main-cta-progress-track {
-  height: 3px;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--paper-raised) 35%, transparent);
-  overflow: hidden;
-}
-
-.today-main-cta-progress-fill {
-  height: 100%;
-  width: 100%;
-  transform-origin: left;
-  border-radius: var(--radius-pill);
-  background: var(--paper-raised);
-  transition: transform 0.2s ease;
-}
-
-/* 已完成: the primary CTA downgrades to a flat receipt - no gradient, no
-   shadow, same "flat info" family as .today-secondary-card (border only,
-   no box-shadow) since this is a status card, not an action, aside from the
-   one small secondary "再練10題" entry point inside it. */
-.today-main-cta-done {
+.today-task-label {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
-  background: var(--paper-raised);
-  padding: var(--space-3) var(--space-4);
+  gap: var(--space-1);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: var(--text-caption);
 }
 
-.today-main-cta-done-icon {
+.today-task-label .today-icon {
+  color: var(--accent);
+}
+
+.today-task-label .today-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.today-task-count {
+  margin: 0;
+  font-family: var(--font-jp-serif);
+  color: var(--ink);
+}
+
+.today-task-count-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-task-count-prefix,
+.today-task-count-suffix {
+  font-size: var(--text-body);
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.today-task-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.today-task-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.today-task-dot--filled {
+  background: var(--accent);
+}
+
+.today-task-caption {
+  margin: 0;
+  font-size: var(--text-tag);
+  color: var(--ink-faint);
+}
+
+.today-task-start {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--paper-raised);
+  font-weight: 700;
+  font-size: var(--text-body);
+  padding: var(--space-2) var(--space-4);
+  transition: transform 0.12s ease;
+}
+
+.today-task-start:active {
+  transform: scale(0.97);
+}
+
+.today-task-start-arrow {
+  font-size: 1.15em;
+}
+
+/* 已完成: same soft-card family, success-tinted instead of accent-tinted so
+   the color itself signals "done" (consistent with --success being reserved
+   for outcome feedback, tokens.css). */
+.today-task-card--done {
+  background: color-mix(in srgb, var(--success) 10%, var(--paper-raised));
+}
+
+.today-task-done-icon {
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -218,11 +240,11 @@
   color: var(--success);
 }
 
-.today-main-cta-done-icon .today-icon {
+.today-task-done-icon .today-icon {
   color: var(--success);
 }
 
-.today-main-cta-done-text {
+.today-task-done-text {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -230,11 +252,11 @@
   gap: 2px;
 }
 
-.today-main-cta-done-title {
+.today-task-done-title {
   font-weight: 600;
 }
 
-.today-main-cta-done-sub {
+.today-task-done-sub {
   color: var(--ink-faint);
   font-size: var(--text-caption);
 }
@@ -243,7 +265,7 @@
    you can do from the 已完成 receipt): full hover+active feedback.
    position:relative + ::after widens the tap target to 44px without
    growing the pill itself (see layout.css's .chip comment). */
-.today-main-cta-continue {
+.today-task-continue {
   position: relative;
   flex-shrink: 0;
   border: 1px solid var(--line-strong);
@@ -255,7 +277,7 @@
   transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
 }
 
-.today-main-cta-continue::after {
+.today-task-continue::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -267,12 +289,12 @@
   background: transparent;
 }
 
-.today-main-cta-continue:hover {
+.today-task-continue:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
 
-.today-main-cta-continue:active {
+.today-task-continue:active {
   transform: scale(0.96);
 }
 
@@ -334,39 +356,59 @@
   font-size: 1.25rem;
 }
 
-.today-wrong-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* Collapsed padding/line-height trimmed down from the card family's usual
-   space-3 - with up to 5 of these stacked above 每日一文法/學習紀錄, the
-   inherited body line-height (1.7) on a single-line row was costing real
-   vertical space for no readability benefit at this row height. */
-.today-wrong-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+/* 需要加強: one bordered card with divider lines between rows (border-top on
+   every row, including the first, right under the header) rather than a
+   stack of separate shadowed cards - see search.css's card-anatomy note for
+   why this app treats "grouped list" and "independent cards" as visually
+   distinct families. */
+.today-weak-section {
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   background: var(--paper-raised);
-  padding: var(--space-2) var(--space-4);
+  overflow: hidden;
+}
+
+.today-weak-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+}
+
+.today-weak-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.today-weak-subtitle {
+  margin: 0;
+  flex-shrink: 0;
+  color: var(--ink-faint);
+  font-size: var(--text-tag);
+  text-align: right;
+}
+
+.today-weak-section .today-empty {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.today-weak-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.today-weak-item {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--line);
   cursor: pointer;
   touch-action: manipulation;
-  transition: box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
 }
 
-.today-wrong-card:hover {
-  border-color: var(--line-strong);
-  box-shadow: var(--shadow-2);
-}
-
-/* Takes a dismissed card's place for TOAST_DURATION_MS (todayView.ts), then
-   the card is dropped from the list entirely - flat/no-shadow like the
-   page's other non-interactive info family, since this is transient
-   feedback, not something to click. */
-@keyframes today-wrong-toast-fade {
+/* Takes a dismissed item's place in the list for TOAST_DURATION_MS
+   (todayView.ts), then the row is dropped entirely - same border-top/padding
+   rhythm as a real item so the divider spacing doesn't jump. */
+@keyframes today-weak-toast-fade {
   0%,
   70% {
     opacity: 1;
@@ -376,16 +418,15 @@
   }
 }
 
-.today-wrong-toast {
-  border-radius: var(--radius-panel);
-  background: color-mix(in srgb, var(--success) 12%, var(--paper-raised));
+.today-weak-toast {
   padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--line);
   color: var(--ink-soft);
   font-size: var(--text-caption);
-  animation: today-wrong-toast-fade 1.5s ease forwards;
+  animation: today-weak-toast-fade 1.5s ease forwards;
 }
 
-.today-wrong-head {
+.today-weak-item-head {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
@@ -395,18 +436,18 @@
   line-height: 1.3;
 }
 
-/* Muted + smaller than .today-wrong-primary so it reads as a label, not a
+/* Muted + smaller than .today-weak-primary so it reads as a label, not a
    second focal point competing with the Japanese word next to it - same
    role as dictionary.css's .pos-badge/.jlpt-badge (metadata chrome, not
    content), just without their background pill since this is a dense list
    row rather than a detail-page header. */
-.today-wrong-kind {
+.today-weak-kind {
   flex-shrink: 0;
   color: var(--ink-faint);
   font-size: var(--text-tag);
 }
 
-.today-wrong-primary {
+.today-weak-primary {
   font-family: var(--font-jp-serif);
   font-weight: 700;
   font-size: var(--text-section);
@@ -415,18 +456,32 @@
   overflow-wrap: anywhere;
 }
 
-/* Wrong count is the spec's explicit carve-out for --accent outside the main
-   CTA (tokens.css's semantics note reserves accent for interactive use - this
-   page's spec calls this out by name as the one other allowed spot). */
-.today-wrong-count {
+/* Plain gray, not --accent - this row now signals "expand in place" (see
+   .today-weak-chevron), not "this is a big deliberate accent moment" like
+   the old ×N used to. */
+.today-weak-count {
   margin-left: auto;
-  color: var(--accent);
-  font-weight: 600;
+  color: var(--ink-faint);
+  font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.today-wrong-reveal-row {
+/* Reuses the "›" glyph (same font/weight as .today-secondary-chevron)
+   rotated 90° rather than a different character - a down-pointing chevron
+   here means "expand in place", not "navigate away", so it's deliberately
+   distinct from the secondary cards' right-pointing arrow despite sharing
+   the same glyph underneath. */
+.today-weak-chevron {
+  flex-shrink: 0;
+  display: inline-block;
+  color: var(--ink-faint);
+  font-size: 1.1rem;
+  transform: rotate(90deg);
+}
+
+.today-weak-reveal-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -435,7 +490,7 @@
   border-top: 1px solid var(--line);
 }
 
-.today-wrong-reveal {
+.today-weak-reveal {
   flex: 1;
   min-width: 0;
   color: var(--ink-soft);
@@ -445,13 +500,11 @@
 /* An explicit pill affordance (not just "tap the revealed text") so the
    self-grade gesture is discoverable, not guessed at. Success-tinted since
    tapping it is a positive self-report ("I remembered"), consistent with
-   --success being reserved for outcome feedback (tokens.css). */
-/* Tier 1 (the affirmative self-report action of this card - the whole
-   point of expanding a wrong-word card): full hover+active feedback, own
-   success hue kept (semantic, not decorative - same reasoning as
-   .occlude-btn--remember). position:relative + ::after widens the tap
-   target to 44px (see layout.css's .chip comment). */
-.today-wrong-remember {
+   --success being reserved for outcome feedback (tokens.css). Tier 1 (the
+   affirmative self-report action of this row - the whole point of expanding
+   it): full hover+active feedback, position:relative + ::after widens the
+   tap target to 44px (see layout.css's .chip comment). */
+.today-weak-remember {
   position: relative;
   flex-shrink: 0;
   border: 1px solid var(--line-strong);
@@ -463,7 +516,7 @@
   transition: border-color 0.15s ease, transform 0.12s ease;
 }
 
-.today-wrong-remember::after {
+.today-weak-remember::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -475,11 +528,11 @@
   background: transparent;
 }
 
-.today-wrong-remember:hover:not(:disabled) {
+.today-weak-remember:hover:not(:disabled) {
   border-color: var(--success);
 }
 
-.today-wrong-remember:active:not(:disabled) {
+.today-weak-remember:active:not(:disabled) {
   transform: scale(0.96);
 }
 
@@ -503,14 +556,7 @@
   cursor: pointer;
 }
 
-.today-daily-grammar-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-/* Smaller than .today-wrong-primary (--text-section) on purpose - this card
+/* Smaller than .today-weak-primary (--text-section) on purpose - this card
    is a single daily read, not a list item competing for scan-attention. */
 .today-daily-grammar-pattern {
   font-family: var(--font-jp-serif);
@@ -520,9 +566,10 @@
   overflow-wrap: anywhere;
 }
 
-.today-daily-grammar-date {
-  color: var(--ink-faint);
-  font-size: var(--text-tag);
+.today-daily-grammar-meaning {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-caption);
 }
 
 .today-stats {

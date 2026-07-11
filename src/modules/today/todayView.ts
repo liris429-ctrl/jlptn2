@@ -27,8 +27,8 @@ import {
 import { consumePendingCelebration, getInProgressRoundSummary } from "./todayQuizEngine.ts";
 import { TODAY_ICONS } from "./todayIcons.ts";
 
-const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
 const ACCURACY_BAR_DAYS = 21;
+const MAIN_TASK_TOTAL = 10;
 
 type PhaseKey = "explore" | "review" | "sprint";
 
@@ -143,10 +143,11 @@ function addDaysLocal(dateStr: string, days: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function formatGreetingDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number) as [number, number, number];
-  const date = new Date(y, m - 1, d);
-  return `${m}月${d}日(${WEEKDAY_LABELS[date.getDay()]})`;
+function greetingLabel(now: Date = new Date()): string {
+  const hour = now.getHours();
+  if (hour >= 5 && hour < 12) return "早安";
+  if (hour >= 12 && hour < 18) return "午安";
+  return "晚安";
 }
 
 function formatShortDate(dateStr: string): string {
@@ -202,7 +203,7 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
 
   // Persisted across re-renders (not just local to one render pass) so the
   // accordion's expanded card survives the full-page rebuild that a
-  // subscribeSrs emit triggers - see renderRecentWrongSection.
+  // subscribeSrs emit triggers - see renderWeakSection.
   let expandedKey: string | null = null;
 
   // "想起來了" dismissal is session-only UI state, never written to
@@ -231,9 +232,19 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
     const banner = renderBanner(data);
     if (banner) children.push(banner);
     const mainCta = renderMainCta(data);
-    children.push(renderHeaderBlock(data, render), mainCta, renderSecondaryRow(data));
+    children.push(renderHeaderBlock(data, render), mainCta);
     children.push(
-      renderRecentWrongSection(data, {
+      renderStatsSection(data, {
+        getActiveDate: () => activeActivityDate,
+        setActiveDate: (date) => {
+          activeActivityDate = date;
+          void render();
+        },
+      }),
+    );
+    children.push(renderSecondaryRow(data));
+    children.push(
+      renderWeakSection(data, {
         getExpandedKey: () => expandedKey,
         setExpandedKey: (key) => {
           expandedKey = key;
@@ -262,15 +273,6 @@ export async function renderTodayView(container: HTMLElement): Promise<void> {
     );
     const dailyGrammar = renderDailyGrammarSection(data);
     if (dailyGrammar) children.push(dailyGrammar);
-    children.push(
-      renderStatsSection(data, {
-        getActiveDate: () => activeActivityDate,
-        setActiveDate: (date) => {
-          activeActivityDate = date;
-          void render();
-        },
-      }),
-    );
     page.append(...children);
 
     // Only fires the very next time /today renders after round 1 actually
@@ -307,13 +309,13 @@ function renderBanner(data: TodayData): HTMLElement | null {
  * instead of riding the page's normal --space-6 section rhythm - they read as
  * one "where am I, how much runway is left" unit, not two separate sections. */
 function renderHeaderBlock(data: TodayData, onChange: () => void): HTMLElement {
-  return el("div", { className: "today-header-block" }, [renderGreeting(data), renderCountdownRow(data, onChange)]);
+  return el("div", { className: "today-header-block" }, [renderGreeting(), renderCountdownRow(data, onChange)]);
 }
 
-function renderGreeting(data: TodayData): HTMLElement {
+function renderGreeting(): HTMLElement {
   return el("div", { className: "today-greeting" }, [
-    el("h1", {}, ["今日"]),
-    el("p", { className: "today-greeting-date" }, [formatGreetingDate(data.today)]),
+    el("h1", {}, [`👋 ${greetingLabel()}`]),
+    el("p", { className: "today-greeting-sub" }, ["今天也一起學日文吧！"]),
   ]);
 }
 
@@ -350,62 +352,60 @@ function renderCountdownRow(data: TodayData, onChange: () => void): HTMLElement 
   ]);
 }
 
-/** One card, three states it "becomes" rather than three buttons side by
- * side: 未開始 (default gradient CTA) -> 進行中 (same shape, "繼續" +
- * progress bar, once a round is left mid-way) -> 已完成 (downgrades from
- * primary action to a flat receipt, with "再練10題" as its own secondary
- * entry point - see todayQuizEngine.ts's start() for how that transparently
- * becomes a weak-fill 續攤 round). */
+/** One card, three states it "becomes": 未開始/進行中 share the same soft
+ * task-card shell (big remaining-count number + dot progress bar, "開始" vs
+ * "繼續" on the button) -> 已完成 swaps to a success-tinted receipt variant
+ * of the same shell, with "再練10題" as its own secondary entry point - see
+ * todayQuizEngine.ts's start() for how that transparently becomes a
+ * weak-fill 續攤 round. */
 function renderMainCta(data: TodayData): HTMLElement {
-  if (data.inProgress != null) return renderMainCtaInProgress(data.inProgress);
+  if (data.inProgress != null) {
+    return renderMainTaskCard(data.inProgress.currentIndex, data.inProgress.total, "繼續");
+  }
   if (data.firstRoundResult != null) return renderMainCtaDone(data);
-  return renderMainCtaStart(data);
+  return renderMainTaskCard(0, MAIN_TASK_TOTAL, "開始");
 }
 
-function renderMainCtaStart(data: TodayData): HTMLElement {
-  const btn = el("button", { className: "today-main-cta", type: "button" }, [
-    el("div", { className: "today-main-cta-text" }, [
-      el("span", { className: "today-main-cta-title" }, ["今日の10問"]),
-      el("span", { className: "today-main-cta-sub" }, [
-        `待複習 ${data.dueCount}・弱點 ${data.weakCount}・新詞 ${data.newCount}`,
-      ]),
-    ]),
-    el("span", { className: "today-main-cta-start" }, ["開始"]),
+function renderMainTaskCard(completed: number, total: number, buttonLabel: string): HTMLElement {
+  const remaining = total - completed;
+  const dots = Array.from({ length: total }, (_, i) =>
+    el("span", { className: `today-task-dot${i < completed ? " today-task-dot--filled" : ""}` }),
+  );
+
+  const btn = el("button", { className: "today-task-start", type: "button" }, [
+    buttonLabel,
+    el("span", { className: "today-task-start-arrow", "aria-hidden": "true" }, ["›"]),
   ]);
   btn.addEventListener("click", () => navigate("/today/quiz"));
-  return btn;
-}
 
-function renderMainCtaInProgress(progress: { currentIndex: number; total: number }): HTMLElement {
-  const fill = el("div", { className: "today-main-cta-progress-fill" });
-  fill.style.transform = `scaleX(${progress.currentIndex / progress.total})`;
-
-  const btn = el("button", { className: "today-main-cta", type: "button" }, [
-    el("div", { className: "today-main-cta-text" }, [
-      el("span", { className: "today-main-cta-title" }, [
-        `繼續・第 ${progress.currentIndex + 1}/${progress.total} 題`,
+  return el("div", { className: "today-task-card" }, [
+    el("div", { className: "today-task-left" }, [
+      el("div", { className: "today-task-label" }, [icon(TODAY_ICONS.target), el("span", {}, ["今日學習任務"])]),
+      el("p", { className: "today-task-count" }, [
+        el("span", { className: "today-task-count-prefix" }, ["還有 "]),
+        el("span", { className: "today-task-count-number" }, [`${remaining}`]),
+        el("span", { className: "today-task-count-suffix" }, [" 題"]),
       ]),
-      el("div", { className: "today-main-cta-progress-track" }, [fill]),
+      el("div", { className: "today-task-dots" }, dots),
+      el("p", { className: "today-task-caption" }, [`${completed} / ${total} 已完成`]),
     ]),
-    el("span", { className: "today-main-cta-start" }, ["繼續"]),
+    btn,
   ]);
-  btn.addEventListener("click", () => navigate("/today/quiz"));
-  return btn;
 }
 
 function renderMainCtaDone(data: TodayData): HTMLElement {
   const result = data.firstRoundResult!;
-  const continueLink = el("button", { className: "today-main-cta-continue", type: "button" }, ["再練 10 題"]);
+  const continueLink = el("button", { className: "today-task-continue", type: "button" }, ["再練 10 題"]);
   continueLink.addEventListener("click", (event) => {
     event.stopPropagation();
     navigate("/today/quiz");
   });
 
-  return el("div", { className: "today-main-cta-done" }, [
-    el("div", { className: "today-main-cta-done-icon" }, [icon(TODAY_ICONS.check)]),
-    el("div", { className: "today-main-cta-done-text" }, [
-      el("span", { className: "today-main-cta-done-title" }, ["今日の10問 完成"]),
-      el("span", { className: "today-main-cta-done-sub" }, [
+  return el("div", { className: "today-task-card today-task-card--done" }, [
+    el("div", { className: "today-task-done-icon" }, [icon(TODAY_ICONS.check)]),
+    el("div", { className: "today-task-done-text" }, [
+      el("span", { className: "today-task-done-title" }, ["今日學習任務 完成"]),
+      el("span", { className: "today-task-done-sub" }, [
         `答對 ${result.correct}/${result.total}・連續 ${data.streak} 天 🔥`,
       ]),
     ]),
@@ -456,7 +456,7 @@ function renderSecondaryRow(data: TodayData): HTMLElement {
 
 const TOAST_DURATION_MS = 1500;
 
-interface WrongCardHandle {
+interface WeakItemHandle {
   getExpandedKey(): string | null;
   setExpandedKey(key: string | null): void;
   isDismissed(key: string): boolean;
@@ -464,29 +464,45 @@ interface WrongCardHandle {
   dismiss(w: WordState): void;
 }
 
-function renderRecentWrongSection(data: TodayData, handle: WrongCardHandle): HTMLElement {
-  const title = el("p", { className: "today-section-title" }, ["最近錯詞・點一下自我檢查"]);
+/** One bordered white card with divider lines between rows (not a stack of
+ * separate cards) - "需要加強" (was 最近錯詞), same underlying data/expand-
+ * to-reveal/想起來了 interaction as before, just restyled: muted kind label,
+ * "答錯N次" instead of "×N", and a down-chevron (rotated ›, see
+ * .today-weak-chevron) signaling in-place expand rather than navigation. */
+function renderWeakSection(data: TodayData, handle: WeakItemHandle): HTMLElement {
+  const header = el("div", { className: "today-weak-header" }, [
+    el("p", { className: "today-weak-title" }, ["需要加強"]),
+    el("p", { className: "today-weak-subtitle" }, ["最近七天較容易錯的文法及單字"]),
+  ]);
+
   if (data.recentWrong.length === 0) {
-    return el("section", {}, [title, el("p", { className: "today-empty" }, ["最近沒有錯題，保持下去！"])]);
+    return el("section", { className: "today-weak-section" }, [
+      header,
+      el("p", { className: "today-empty" }, ["最近沒有錯題，保持下去！"]),
+    ]);
   }
+
   const items = data.recentWrong
     .map((w) => {
-      if (!handle.isDismissed(w.key)) return renderWrongCard(w, handle);
+      if (!handle.isDismissed(w.key)) return renderWeakItem(w, handle);
       // Dismissed this session - shown once more as a fading confirmation,
       // then dropped from the list entirely (still filtered out here on the
       // next render once its timer clears isToastActive).
       return handle.isToastActive(w.key) ? renderDismissToast() : null;
     })
     .filter((item): item is HTMLElement => item !== null);
-  const list = el("div", { className: "today-wrong-list" }, items);
-  return el("section", {}, [title, list]);
+
+  return el("section", { className: "today-weak-section" }, [
+    header,
+    el("div", { className: "today-weak-list" }, items),
+  ]);
 }
 
 function renderDismissToast(): HTMLElement {
-  return el("div", { className: "today-wrong-toast" }, ["已記錄，但記住前可能再出現"]);
+  return el("div", { className: "today-weak-toast" }, ["已記錄，但記住前可能再出現"]);
 }
 
-function renderWrongCard(w: WordState, handle: WrongCardHandle): HTMLElement {
+function renderWeakItem(w: WordState, handle: WeakItemHandle): HTMLElement {
   const store = getStoreSync();
   const expanded = handle.getExpandedKey() === w.key;
 
@@ -507,28 +523,29 @@ function renderWrongCard(w: WordState, handle: WrongCardHandle): HTMLElement {
     revealText = diffNote ? `${entry.meaning}・${diffNote}` : entry.meaning;
   }
 
-  const head = el("div", { className: "today-wrong-head" }, [
-    el("span", { className: "today-wrong-kind" }, [kindLabel]),
-    el("span", { className: "today-wrong-primary" }, [primaryText]),
-    el("span", { className: "today-wrong-count" }, [`×${recentWrongCount(w)}`]),
+  const head = el("div", { className: "today-weak-item-head" }, [
+    el("span", { className: "today-weak-kind" }, [kindLabel]),
+    el("span", { className: "today-weak-primary" }, [primaryText]),
+    el("span", { className: "today-weak-count" }, [`答錯 ${recentWrongCount(w)} 次`]),
+    el("span", { className: "today-weak-chevron", "aria-hidden": "true" }, ["›"]),
   ]);
 
-  const card = el("div", { className: "today-wrong-card" }, [head]);
+  const item = el("div", { className: "today-weak-item" }, [head]);
 
   if (expanded) {
-    const rememberBtn = el("button", { className: "today-wrong-remember", type: "button" }, ["想起來了"]);
+    const rememberBtn = el("button", { className: "today-weak-remember", type: "button" }, ["想起來了"]);
     rememberBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       handle.dismiss(w);
     });
-    const revealRow = el("div", { className: "today-wrong-reveal-row" }, [
-      el("p", { className: "today-wrong-reveal" }, [revealText]),
+    const revealRow = el("div", { className: "today-weak-reveal-row" }, [
+      el("p", { className: "today-weak-reveal" }, [revealText]),
       rememberBtn,
     ]);
-    card.append(revealRow);
+    item.append(revealRow);
   }
 
-  card.addEventListener("click", () => {
+  item.addEventListener("click", () => {
     if (!expanded) {
       handle.setExpandedKey(w.key);
       return;
@@ -536,7 +553,7 @@ function renderWrongCard(w: WordState, handle: WrongCardHandle): HTMLElement {
     navigate(w.kind === "vocab" ? `/vocab/${w.id}` : `/grammar/${w.id}`);
   });
 
-  return card;
+  return item;
 }
 
 const DAILY_GRAMMAR_NAV_DELAY_MS = 450;
@@ -552,11 +569,8 @@ function renderDailyGrammarSection(data: TodayData): HTMLElement | null {
   if (!entry) return null;
 
   const card = el("div", { className: "today-daily-grammar-card", role: "button", tabindex: "0" }, [
-    el("div", { className: "today-daily-grammar-head" }, [
-      el("span", { className: "today-daily-grammar-pattern" }, [entry.pattern]),
-      el("span", { className: "today-daily-grammar-date" }, [formatShortDate(data.today)]),
-    ]),
-    el("p", { className: "today-wrong-reveal" }, [entry.meaning]),
+    el("span", { className: "today-daily-grammar-pattern" }, [entry.pattern]),
+    el("p", { className: "today-daily-grammar-meaning" }, [entry.meaning]),
   ]);
   const open = (): void => {
     burstConfetti(card);
@@ -571,7 +585,7 @@ function renderDailyGrammarSection(data: TodayData): HTMLElement | null {
     }
   });
 
-  return el("section", {}, [el("h2", { className: "today-section-title" }, ["每日一文法"]), card]);
+  return el("section", {}, [el("h2", { className: "today-section-title" }, ["今日文法"]), card]);
 }
 
 function activityTier(stats: DailyStats | undefined): string {
