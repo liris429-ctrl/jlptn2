@@ -558,36 +558,34 @@ function renderWeakItem(w: WordState, handle: WeakItemHandle): HTMLElement {
 
 const DAILY_GRAMMAR_NAV_DELAY_MS = 450;
 
-/** Milestone 3's 每日一文法卡 - clicking it goes to the detail page, which
- * already calls touchWord() on mount (see grammarDetailView.ts). Bursts
- * confetti right on the card first, then navigates - a full-page route
- * swap wipes the confetti field instantly, so the burst needs a beat to
- * actually be seen before /today unmounts. */
+/** Milestone 3's 每日一文法卡 - the card itself is now just a read surface
+ * (N2 is a category label, not an action); "看例句" is the one explicit
+ * click target, going to the detail page which already calls touchWord() on
+ * mount (see grammarDetailView.ts). Bursts confetti right on the card first,
+ * then navigates - a full-page route swap wipes the confetti field
+ * instantly, so the burst needs a beat to actually be seen before /today
+ * unmounts. */
 function renderDailyGrammarSection(data: TodayData): HTMLElement | null {
   if (data.dailyGrammarId == null) return null;
   const entry = getStoreSync().grammarById.get(data.dailyGrammarId);
   if (!entry) return null;
 
-  const card = el("div", { className: "today-daily-grammar-card", role: "button", tabindex: "0" }, [
+  const exampleBtn = el("button", { className: "today-daily-grammar-cta", type: "button" }, ["看例句"]);
+
+  const card = el("div", { className: "today-daily-grammar-card" }, [
     el("div", { className: "today-daily-grammar-content" }, [
-      el("span", { className: "today-daily-grammar-pattern" }, [entry.pattern]),
+      el("div", { className: "today-daily-grammar-header" }, [
+        el("span", { className: "today-daily-grammar-pattern" }, [entry.pattern]),
+        el("span", { className: "today-daily-grammar-level-badge" }, ["N2"]),
+      ]),
       el("p", { className: "today-daily-grammar-meaning" }, [entry.meaning]),
-    ]),
-    el("div", { className: "today-daily-grammar-level" }, [
-      el("span", { className: "today-daily-grammar-level-badge" }, ["N2"]),
+      el("div", { className: "today-daily-grammar-actions" }, [exampleBtn]),
     ]),
   ]);
-  const open = (): void => {
+
+  exampleBtn.addEventListener("click", () => {
     burstConfetti(card);
     setTimeout(() => navigate(`/grammar/${entry.id}`), DAILY_GRAMMAR_NAV_DELAY_MS);
-  };
-  card.addEventListener("click", open);
-  card.addEventListener("keydown", (event) => {
-    const e = event as KeyboardEvent;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      open();
-    }
   });
 
   return el("section", {}, [el("h2", { className: "today-section-title" }, ["今日文法"]), card]);

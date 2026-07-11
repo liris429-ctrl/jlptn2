@@ -569,20 +569,20 @@
   padding: var(--space-6) 0;
 }
 
-/* Three columns: rounded accent stripe, content, and a JLPT-level sidebar -
-   not a full border+shadow, since this is a single daily pick to read, not
-   a primary action, so it stays in the "flat info" card family rather than
-   the "interactive CTA" one. display:flex (not a positioned ::before) so
-   the stripe is a real flex item and gets genuine pill end-caps from its
-   own border-radius, which a plain border-left can never have independent
-   of the card's own corners. */
+/* Rounded accent stripe + content - not a full border+shadow, since this is
+   a single daily pick to read, not a primary action, so it stays in the
+   "flat info" card family rather than the "interactive CTA" one (that's now
+   .today-daily-grammar-cta's job specifically). display:flex (not a
+   positioned ::before) so the stripe is a real flex item and gets genuine
+   pill end-caps from its own border-radius, which a plain border-left can
+   never have independent of the card's own corners. No cursor:pointer/
+   role=button here anymore - the card itself isn't a click target. */
 .today-daily-grammar-card {
   display: flex;
   align-items: stretch;
   border-radius: var(--radius-input);
   background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
   overflow: hidden;
-  cursor: pointer;
 }
 
 .today-daily-grammar-card::before {
@@ -600,7 +600,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-3) var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4) var(--space-3);
+}
+
+.today-daily-grammar-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 /* Smaller than .today-weak-primary (--text-section) on purpose - this card
@@ -613,6 +620,22 @@
   overflow-wrap: anywhere;
 }
 
+/* Neutral outline, not accent-filled: this is a classification label (this
+   app's whole grammar set is JLPT N2 by scope, unlike vocab which spans
+   levels for foundational words), not an action - --accent stays reserved
+   for the one primary CTA on this card (.today-daily-grammar-cta) and the
+   page's hero "開始" button, per tokens.css's color-semantics note. */
+.today-daily-grammar-level-badge {
+  flex-shrink: 0;
+  font-size: var(--text-tag);
+  font-weight: 500;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-tag);
+  padding: var(--space-1) var(--space-2);
+  letter-spacing: 0.02em;
+}
+
 .today-daily-grammar-meaning {
   margin: 0;
   color: var(--ink-soft);
@@ -620,28 +643,47 @@
   text-align: justify;
 }
 
-/* This app's whole grammar set is JLPT N2 by scope (unlike vocab, which
-   spans levels for foundational words) - a constant label, not per-entry
-   data, but still worth surfacing so the card reads as "this is N2
-   material" at a glance. */
-.today-daily-grammar-level {
-  flex-shrink: 0;
+.today-daily-grammar-actions {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  border-left: 1px solid var(--line);
-  background: color-mix(in srgb, var(--ink) 2%, var(--paper-raised));
+  margin-top: var(--space-1);
 }
 
-.today-daily-grammar-level-badge {
-  font-size: var(--text-tag);
-  font-weight: 700;
-  color: var(--accent-ink);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  padding: var(--space-1) var(--space-2);
+/* Tier 1 (this card's own primary action, now that the card itself isn't
+   clickable): full hover+active feedback, the same accent-fill +
+   deepen-on-hover vocabulary as .btn--primary (base.css), just sized down
+   to fit a compact info card rather than a full-width page action.
+   position:relative + ::after widens the tap target to 44px (see
+   layout.css's .chip comment) despite the pill's own smaller visible size. */
+.today-daily-grammar-cta {
+  position: relative;
+  border: none;
   border-radius: var(--radius-pill);
-  letter-spacing: 0.02em;
+  background: var(--accent);
+  color: var(--paper-raised);
+  font-weight: 600;
+  font-size: var(--text-tag);
+  padding: var(--space-1) var(--space-4);
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+
+.today-daily-grammar-cta::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+}
+
+.today-daily-grammar-cta:hover {
+  background: color-mix(in srgb, var(--accent) 90%, black);
+}
+
+.today-daily-grammar-cta:active {
+  transform: scale(0.96);
 }
 
 .today-stats {
