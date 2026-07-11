@@ -122,10 +122,18 @@ const ROUND_SNAPSHOT_META_KEY = "todayRoundSnapshot";
 
 /** Home page ("進行中" main-CTA state) reads just this summary - kept here
  * (not in srsStore.ts) so the full RoundSnapshot shape stays this module's
- * own concern; todayView.ts never needs to know what a snapshot looks like. */
+ * own concern; todayView.ts never needs to know what a snapshot looks like.
+ * Only "main" snapshots qualify: an abandoned 續攤 round or 昨夜複習 session
+ * (both roundKind "extra", and 昨夜複習 specifically has no 10-question cap -
+ * see startWithWords()) would otherwise hijack the home page's fixed-10
+ * "今日學習任務" tile with a leftover total that was never 10 to begin with.
+ * Those still resume correctly if the user navigates straight back into
+ * /today/quiz (see start()) - only their surfacing on the home card is
+ * restricted to the main round. */
 export async function getInProgressRoundSummary(): Promise<{ currentIndex: number; total: number } | null> {
   const snapshot = await getMeta<RoundSnapshot>(ROUND_SNAPSHOT_META_KEY);
   if (snapshot == null || snapshot.date !== getStudyDate() || snapshot.questions.length === 0) return null;
+  if (snapshot.roundKind !== "main") return null;
   if (snapshot.answers.length >= snapshot.questions.length) return null;
   return { currentIndex: snapshot.answers.length, total: snapshot.questions.length };
 }

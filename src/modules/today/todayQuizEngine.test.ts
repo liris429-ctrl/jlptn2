@@ -416,6 +416,24 @@ describe("getInProgressRoundSummary", () => {
     }
     expect(await getInProgressRoundSummary()).toBeNull();
   });
+
+  // Regression: an abandoned 昨夜複習 session (roundKind "extra", no
+  // 10-question cap - see startWithWords) used to leak into this summary and
+  // make the home page's fixed-10 "今日學習任務" tile show a bogus total
+  // (e.g. "還有 20 題") for a round that was never the main round at all.
+  it("ignores a left-mid-way 'extra' round (e.g. 昨夜複習) - only 'main' rounds surface here", async () => {
+    const engine = new TodayQuizEngine();
+    engine.startWithWords([
+      { kind: "vocab", id: "v-0" },
+      { kind: "vocab", id: "v-1" },
+      { kind: "vocab", id: "v-2" },
+    ]);
+    let latest: any;
+    engine.subscribe((s) => (latest = s));
+    engine.selectOption(latest.questions[0].answerIndex);
+
+    expect(await getInProgressRoundSummary()).toBeNull();
+  });
 });
 
 describe("TodayQuizEngine.startWithWords", () => {
