@@ -644,21 +644,3 @@ async function computeDailyGrammarPick(seedDate: string): Promise<string | null>
   const byMasteryAsc = [...grammarStates.values()].sort((a, b) => a.mastery - b.mastery);
   return byMasteryAsc[0]?.id ?? null;
 }
-
-export interface SrsBackup {
-  exportedAt: number;
-  wordState: WordState[];
-  dailyStats: DailyStats[];
-  meta: { key: string; value: unknown }[];
-}
-
-/** Serializes all three stores for a local export - no server, just a
- * downloadable snapshot the caller turns into a file (see todayView.ts). */
-export async function exportAllData(): Promise<SrsBackup> {
-  const [wordState, dailyStats, meta] = await Promise.all([
-    dbGetAll<WordState>(STORE_WORD_STATE),
-    dbGetAll<DailyStats>(STORE_DAILY_STATS),
-    dbGetAll<{ key: string; value: unknown }>(STORE_META),
-  ]);
-  return { exportedAt: Date.now(), wordState, dailyStats, meta };
-}

@@ -16,6 +16,21 @@ import {
   type DrawnWord,
 } from "./srsStore.ts";
 
+/** One-shot signal for todayView.ts's confetti burst: set when round 1
+ * finishes (on /today/quiz), consumed the next time /today mounts and
+ * renders the freshly-updated "已完成" receipt. In-memory only (not
+ * persisted) - this is a hash-router SPA so it survives the navigation from
+ * /today/quiz back to /today without a hard reload, but a real page reload
+ * legitimately loses the "just happened" context, which is correct: nobody
+ * expects a repeat celebration after refreshing the page. */
+let pendingCelebration = false;
+
+export function consumePendingCelebration(): boolean {
+  const value = pendingCelebration;
+  pendingCelebration = false;
+  return value;
+}
+
 const QUESTION_COUNT = 10;
 const MIN_GRAMMAR_QUESTIONS = 2;
 const AUTO_ADVANCE_MS = 600;
@@ -400,6 +415,7 @@ export class TodayQuizEngine {
       if (this.state.roundKind === "main") {
         const correct = this.state.answers.filter((a) => a.correct).length;
         void recordFirstRoundResult(correct, this.state.answers.length);
+        pendingCelebration = true;
       }
       void this.clearSnapshot();
     } else {

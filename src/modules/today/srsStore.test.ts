@@ -45,7 +45,6 @@ const {
   getTodayFirstRoundResult,
   getDailyStatsRange,
   getDailyGrammarPick,
-  exportAllData,
   setMeta,
   getMeta,
 } = await import("./srsStore.ts");
@@ -540,17 +539,5 @@ describe("getDailyGrammarPick", () => {
       if (g.id !== "g-2") await recordAnswer("grammar", g.id, true, "quiz"); // seen=1, mastery=1
     }
     expect(await getDailyGrammarPick("2026-07-10")).toBe("g-2");
-  });
-});
-
-describe("exportAllData", () => {
-  it("serializes all three stores", async () => {
-    await recordAnswer("vocab", "v-0", true, "quiz");
-    await setMeta("examDate", "2026-12-06");
-    const backup = await exportAllData();
-    expect(backup.wordState).toHaveLength(1);
-    expect(backup.dailyStats).toHaveLength(1);
-    expect(backup.meta).toEqual([{ key: "examDate", value: "2026-12-06" }]);
-    expect(typeof backup.exportedAt).toBe("number");
   });
 });

@@ -4,59 +4,51 @@
   gap: var(--space-6);
 }
 
+/* Deliberately bigger than this app's usual restrained motion language (see
+   base.css's global reduced-motion override for why no extra JS guard is
+   needed here) - a one-off celebratory exception for "you did the thing"
+   moments, not a pattern to reuse for routine feedback. Positioned at a
+   fixed viewport point (its trigger's center) rather than in normal flow,
+   so it floats above content regardless of scroll position. */
+.today-confetti {
+  position: fixed;
+  width: 0;
+  height: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.today-confetti-piece {
+  position: absolute;
+  width: 6px;
+  height: 10px;
+  border-radius: 1px;
+  opacity: 0;
+  animation: today-confetti-fall 1.1s ease-out forwards;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes today-confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.3), var(--dy)) rotate(calc(var(--rot) * 0.3));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), 140px) rotate(var(--rot));
+  }
+}
+
 .today-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
   background: color-mix(in srgb, var(--accent) 12%, var(--paper-raised));
   border-radius: var(--radius-panel);
   padding: var(--space-3) var(--space-4);
   color: var(--accent-ink);
   font-size: var(--text-caption);
-}
-
-.today-banner-text {
-  flex: 1;
-}
-
-/* Tier 3 (low priority, list-adjacent action): minimal feedback only - a
-   faint background tint on hover, no active/shadow/transform. position:
-   relative + ::after widens the tap target to 44px without the button's own
-   box growing (see layout.css's .chip comment for the pattern). */
-.today-banner-action {
-  position: relative;
-  flex-shrink: 0;
-  border: none;
-  background: none;
-  /* --accent-ink (not --accent) - text-on-tint needs the darker/more-saturated
-     variant to clear WCAG AA (4.5:1); --accent itself only reaches ~4.1:1
-     against this tinted background, same reasoning as .filter-toggle--active
-     and .chip:hover elsewhere in the app. The hover tint below uses
-     --accent-ink too (as a background, not text) for the same reason - it
-     must stay a background-only signal, not push the button's actual hue
-     toward the AA-failing --accent. */
-  color: var(--accent-ink);
-  font-weight: 600;
-  font-size: var(--text-caption);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-tag);
-  transition: background-color 0.15s ease;
-}
-
-.today-banner-action::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 44px;
-  min-width: 44px;
-  transform: translate(-50%, -50%);
-  background: transparent;
-}
-
-.today-banner-action:hover {
-  background: color-mix(in srgb, var(--accent-ink) 10%, transparent);
 }
 
 .today-icon {
@@ -317,6 +309,7 @@
 }
 
 .today-secondary-text {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -330,6 +323,15 @@
 .today-secondary-sub {
   color: var(--ink-faint);
   font-size: var(--text-caption);
+}
+
+/* Same deliberate text-glyph exception as .hub-row-chevron (game.css) -
+   makes the whole card's clickability explicit instead of reading as a
+   static label. */
+.today-secondary-chevron {
+  flex-shrink: 0;
+  color: var(--ink-faint);
+  font-size: 1.25rem;
 }
 
 .today-wrong-list {
@@ -510,6 +512,7 @@
 }
 
 .today-activity-bar {
+  position: relative;
   display: flex;
   gap: 2px;
 }
@@ -517,10 +520,14 @@
 /* 3px is a deliberate one-off, not one of the 4 card-family radii: at ~15px
    square each, --radius-tag (6px) would read as noticeably rounded on a cell
    this small - this is corner-softening only, same spirit as a heatmap/
-   contribution-graph cell. */
+   contribution-graph cell. A <button> now (was a plain <span>, so it can be
+   tapped for the tooltip below) - border/padding reset since it's sitting
+   in for a decorative cell, not a normal control. */
 .today-activity-cell {
   flex: 1;
   aspect-ratio: 1;
+  border: none;
+  padding: 0;
   border-radius: 3px;
   background: var(--line);
 }
@@ -537,6 +544,34 @@
   background: var(--accent);
 }
 
+/* Tap-to-show, anchored to the bar's own width (clamp keeps it from
+   clipping off-screen for the leftmost/rightmost cells) - see
+   renderStatsSection's index-based positioning. */
+.today-activity-tooltip {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius-tag);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-tag);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: var(--shadow-2);
+  pointer-events: none;
+}
+
+.today-activity-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--ink);
+}
+
 .today-stats-row {
   display: flex;
   justify-content: space-between;
@@ -549,4 +584,32 @@
 .today-streak--fresh {
   color: var(--accent);
   font-weight: 600;
+}
+
+/* Slow, small-amplitude and content-justified (fire flickers) rather than
+   decoration for its own sake - kept subtle enough not to read as one of the
+   "infinite-loop micro-animation" AI-slop patterns this app otherwise avoids. */
+.today-streak-fire {
+  display: inline-block;
+  transform-origin: 50% 90%;
+  animation: today-fire-wiggle 2.4s ease-in-out infinite;
+}
+
+@keyframes today-fire-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(-7deg);
+  }
+  35% {
+    transform: rotate(5deg);
+  }
+  55% {
+    transform: rotate(-3deg);
+  }
+  75% {
+    transform: rotate(2deg);
+  }
 }
