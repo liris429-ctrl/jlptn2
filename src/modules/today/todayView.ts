@@ -422,17 +422,17 @@ function secondaryChevron(): HTMLElement {
 }
 
 /** Two static/conditional shortcut cards: 昨夜複習 (milestone 3's entry point,
- * only when yesterday introduced genuinely-tested new words) and 今日の挑戰
+ * only when yesterday introduced genuinely-tested new words) and 今日挑戰
  * (a plain shortcut into 連連看 - no completion tracking, since that would
  * require wiring the unrelated game engine into recordAnswer). */
 function renderSecondaryRow(data: TodayData): HTMLElement {
   const cards: HTMLElement[] = [];
   if (data.yesterdayNewCount > 0) {
     const card = el("button", { className: "today-secondary-card", type: "button" }, [
-      icon(TODAY_ICONS.history),
+      icon(TODAY_ICONS.moon),
       el("span", { className: "today-secondary-text" }, [
         el("span", { className: "today-secondary-title" }, ["昨夜複習"]),
-        el("span", { className: "today-secondary-sub" }, [`昨天的 ${data.yesterdayNewCount} 個新詞`]),
+        el("span", { className: "today-secondary-sub" }, [`昨日新詞：${data.yesterdayNewCount}`]),
       ]),
       secondaryChevron(),
     ]);
@@ -443,7 +443,7 @@ function renderSecondaryRow(data: TodayData): HTMLElement {
   const challengeCard = el("button", { className: "today-secondary-card", type: "button" }, [
     icon(TODAY_ICONS.target),
     el("span", { className: "today-secondary-text" }, [
-      el("span", { className: "today-secondary-title" }, ["今日の挑戰"]),
+      el("span", { className: "today-secondary-title" }, ["今日挑戰"]),
       el("span", { className: "today-secondary-sub" }, ["連連看"]),
     ]),
     secondaryChevron(),
@@ -530,7 +530,7 @@ function renderWeakItem(w: WordState, handle: WeakItemHandle): HTMLElement {
     el("span", { className: "today-weak-chevron", "aria-hidden": "true" }, ["›"]),
   ]);
 
-  const item = el("div", { className: "today-weak-item" }, [head]);
+  const item = el("div", { className: `today-weak-item${expanded ? " today-weak-item--open" : ""}` }, [head]);
 
   if (expanded) {
     const rememberBtn = el("button", { className: "today-weak-remember", type: "button" }, ["想起來了"]);

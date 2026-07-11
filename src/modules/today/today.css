@@ -177,12 +177,17 @@
 
 .today-task-dots {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
+/* flex-shrink:0 is load-bearing: without it, a high total (e.g. 20 dots)
+   can outrun the card's available width and the flex row compresses each
+   dot's width but not its height, turning circles into ovals. */
 .today-task-dot {
   width: 8px;
   height: 8px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: var(--line);
 }
@@ -405,6 +410,14 @@
   touch-action: manipulation;
 }
 
+/* Distinguishes an expanded row from its static neighbors above/below - the
+   reveal row's own border-top alone reads the same as the list's ordinary
+   item dividers, so without this the revealed kana/meaning/button can look
+   like it belongs to the NEXT item rather than the one that was tapped. */
+.today-weak-item--open {
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
+}
+
 /* Takes a dismissed item's place in the list for TOAST_DURATION_MS
    (todayView.ts), then the row is dropped entirely - same border-top/padding
    rhythm as a real item so the divider spacing doesn't jump. */
@@ -481,39 +494,44 @@
   transform: rotate(90deg);
 }
 
+/* Indented (not flush with the row above) so the whole reveal - kana,
+   meaning, button - reads as a child of the tapped word rather than a new
+   sibling row; align-items:flex-end pins the button to the reveal text's
+   own baseline instead of floating at the row's vertical center. */
 .today-weak-reveal-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-2);
-  padding-top: var(--space-2);
+  padding: var(--space-2) 0 0 var(--space-4);
   border-top: 1px solid var(--line);
 }
 
 .today-weak-reveal {
   flex: 1;
   min-width: 0;
-  color: var(--ink-soft);
+  color: var(--ink-faint);
   font-size: var(--text-caption);
 }
 
 /* An explicit pill affordance (not just "tap the revealed text") so the
-   self-grade gesture is discoverable, not guessed at. Success-tinted since
-   tapping it is a positive self-report ("I remembered"), consistent with
-   --success being reserved for outcome feedback (tokens.css). Tier 1 (the
-   affirmative self-report action of this row - the whole point of expanding
-   it): full hover+active feedback, position:relative + ::after widens the
-   tap target to 44px (see layout.css's .chip comment). */
+   self-grade gesture is discoverable, not guessed at. Accent-tinted (not
+   --success green) to stay within the page's one-accent-hue discipline -
+   this button is a neutral "acknowledge" action, not an outcome-feedback
+   moment. Tier 1 (the affirmative self-report action of this row - the
+   whole point of expanding it): full hover+active feedback,
+   position:relative + ::after widens the tap target to 44px (see
+   layout.css's .chip comment). */
 .today-weak-remember {
   position: relative;
   flex-shrink: 0;
-  border: 1px solid var(--line-strong);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line-strong));
   border-radius: var(--radius-pill);
   background: none;
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-tag);
-  color: var(--success);
-  transition: border-color 0.15s ease, transform 0.12s ease;
+  color: var(--accent-ink);
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
 }
 
 .today-weak-remember::after {
@@ -529,7 +547,8 @@
 }
 
 .today-weak-remember:hover:not(:disabled) {
-  border-color: var(--success);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .today-weak-remember:active:not(:disabled) {
