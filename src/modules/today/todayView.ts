@@ -538,17 +538,10 @@ function renderWeakItem(w: WordState, handle: WeakItemHandle): HTMLElement {
       event.stopPropagation();
       handle.dismiss(w);
     });
-    const revealText_ = el("p", { className: "today-weak-reveal" }, [revealText]);
-    // Grammar meanings run long enough to wrap - a side-by-side button fights
-    // the text for width there, so it gets its own full-width text row plus a
-    // right-aligned action row underneath instead of vocab's single-line pair.
-    const revealRow =
-      w.kind === "grammar"
-        ? el("div", { className: "today-weak-reveal-row today-weak-reveal-row--stacked" }, [
-            revealText_,
-            el("div", { className: "today-weak-reveal-actions" }, [rememberBtn]),
-          ])
-        : el("div", { className: "today-weak-reveal-row" }, [revealText_, rememberBtn]);
+    const revealRow = el("div", { className: "today-weak-reveal-row" }, [
+      el("p", { className: "today-weak-reveal" }, [revealText]),
+      rememberBtn,
+    ]);
     item.append(revealRow);
   }
 
@@ -576,8 +569,13 @@ function renderDailyGrammarSection(data: TodayData): HTMLElement | null {
   if (!entry) return null;
 
   const card = el("div", { className: "today-daily-grammar-card", role: "button", tabindex: "0" }, [
-    el("span", { className: "today-daily-grammar-pattern" }, [entry.pattern]),
-    el("p", { className: "today-daily-grammar-meaning" }, [entry.meaning]),
+    el("div", { className: "today-daily-grammar-content" }, [
+      el("span", { className: "today-daily-grammar-pattern" }, [entry.pattern]),
+      el("p", { className: "today-daily-grammar-meaning" }, [entry.meaning]),
+    ]),
+    el("div", { className: "today-daily-grammar-level" }, [
+      el("span", { className: "today-daily-grammar-level-badge" }, ["N2"]),
+    ]),
   ]);
   const open = (): void => {
     burstConfetti(card);

@@ -496,31 +496,18 @@
 
 /* Indented (not flush with the row above) so the whole reveal - kana,
    meaning, button - reads as a child of the tapped word rather than a new
-   sibling row. align-items:center keeps the button aligned to the text
-   block's own vertical center regardless of either one's height, rather
-   than pinning to a shared top or bottom edge. */
+   sibling row. One row shape for both short (vocab) and long-wrapping
+   (grammar) text: align-items:flex-start pins the button near the text's
+   own first line instead of centering/bottoming against the whole
+   (possibly multi-line) block, which is what actually reads as aligned
+   regardless of how many lines the text wraps to. */
 .today-weak-reveal-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   margin-top: var(--space-2);
   padding: var(--space-2) 0 0 var(--space-4);
   border-top: 1px solid var(--line);
-}
-
-/* Grammar meanings run long enough to wrap multiple lines, where a side-by-
-   side button starts fighting the text for width and reads as misaligned
-   no matter which edge it's pinned to. Stack instead: full-width text on
-   top (free to wrap), a dedicated right-aligned action row underneath. */
-.today-weak-reveal-row--stacked {
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-3);
-}
-
-.today-weak-reveal-actions {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .today-weak-reveal {
@@ -528,6 +515,7 @@
   min-width: 0;
   color: var(--ink-faint);
   font-size: var(--text-caption);
+  text-align: justify;
 }
 
 /* An explicit pill affordance (not just "tap the revealed text") so the
@@ -541,6 +529,10 @@
 .today-weak-remember {
   position: relative;
   flex-shrink: 0;
+  /* Optical nudge: without this, the pill's own vertical padding sits its
+     label a couple px above the reveal text's first line despite sharing
+     a flex-start edge. */
+  margin-top: 2px;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line-strong));
   border-radius: var(--radius-pill);
   background: none;
@@ -577,33 +569,38 @@
   padding: var(--space-6) 0;
 }
 
-/* Left accent stripe (not a full border+shadow) - this is a single daily
-   pick to read, not a primary action, so it stays in the "flat info" card
-   family rather than the "interactive CTA" one. */
+/* Three columns: rounded accent stripe, content, and a JLPT-level sidebar -
+   not a full border+shadow, since this is a single daily pick to read, not
+   a primary action, so it stays in the "flat info" card family rather than
+   the "interactive CTA" one. display:flex (not a positioned ::before) so
+   the stripe is a real flex item and gets genuine pill end-caps from its
+   own border-radius, which a plain border-left can never have independent
+   of the card's own corners. */
 .today-daily-grammar-card {
-  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: stretch;
   border-radius: var(--radius-input);
   background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
-  padding: var(--space-3) var(--space-4) var(--space-4) calc(var(--space-4) + 4px);
+  overflow: hidden;
   cursor: pointer;
 }
 
-/* A real border-left can't get its own radius independent of the card's
-   corners, so its ends always read as hard right angles no matter how round
-   the card itself is. A positioned bar with its own border-radius gives it
-   genuine pill-shaped end caps that match the app's soft-card language. */
 .today-daily-grammar-card::before {
   content: "";
-  position: absolute;
-  left: 0;
-  top: var(--space-2);
-  bottom: var(--space-2);
+  flex-shrink: 0;
   width: 3px;
+  margin: var(--space-2) 0 var(--space-2) var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--accent);
+}
+
+.today-daily-grammar-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-4);
 }
 
 /* Smaller than .today-weak-primary (--text-section) on purpose - this card
@@ -620,6 +617,31 @@
   margin: 0;
   color: var(--ink-soft);
   font-size: var(--text-caption);
+  text-align: justify;
+}
+
+/* This app's whole grammar set is JLPT N2 by scope (unlike vocab, which
+   spans levels for foundational words) - a constant label, not per-entry
+   data, but still worth surfacing so the card reads as "this is N2
+   material" at a glance. */
+.today-daily-grammar-level {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  border-left: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 2%, var(--paper-raised));
+}
+
+.today-daily-grammar-level-badge {
+  font-size: var(--text-tag);
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.02em;
 }
 
 .today-stats {
