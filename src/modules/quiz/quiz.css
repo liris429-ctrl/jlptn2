@@ -157,47 +157,165 @@
   margin: 0;
 }
 
-/* Round 1's celebration - the once-a-day treatment, centered and weightier
-   than anything else on this page. .quiz-finished--extra never uses these. */
-.quiz-finished--main {
-  text-align: center;
+/* Round 1's celebration - the once-a-day treatment, weightier than anything
+   else on this page. .quiz-finished--extra never uses these. */
+
+/* Flat achievement panel: no shadow, closed off with a hairline divider
+   instead of a card border - same "info block, not a clickable surface"
+   family as .quiz-explanation/.quiz-review-card below, just centered for
+   this one celebratory moment. */
+.quiz-celebrate-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
 }
 
-.quiz-finished--main .quiz-review {
-  text-align: left;
+.quiz-celebrate-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.quiz-round1-label {
-  color: var(--ink-faint);
-  font-size: var(--text-caption);
+.quiz-celebrate-icon {
+  display: flex;
+  color: var(--accent);
+}
+
+.quiz-celebrate-icon svg {
+  width: 40px;
+  height: 40px;
+}
+
+.quiz-celebrate-title {
   margin: 0;
-}
-
-.quiz-round1-score {
-  font-family: var(--font-jp-serif);
-  font-size: 2.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  margin: 0;
+  color: var(--ink);
 }
 
-.quiz-round1-score span {
-  font-size: var(--text-section);
-  color: var(--ink-faint);
-  font-weight: 400;
+.quiz-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  width: 100%;
 }
 
-.quiz-streak-badge {
-  display: inline-flex;
+/* Flat, no shadow - same family as .quiz-explanation/.quiz-review-card. */
+.quiz-stat-box {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: var(--space-1);
-  align-self: center;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--accent) 12%, var(--paper-raised));
-  color: var(--accent-ink);
-  font-weight: 600;
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
+  border-radius: var(--radius-panel);
+  padding: var(--space-3);
+}
+
+.quiz-stat-number {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.quiz-stat-number span {
+  font-size: var(--text-body);
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
+/* The one deliberately-accented number on this screen (streak) - kept to a
+   single hue, same discipline as the rest of the app's --accent usage. */
+.quiz-stat-number--accent {
+  color: var(--accent);
+}
+
+.quiz-stat-caption {
+  margin: 0;
   font-size: var(--text-caption);
+  color: var(--ink-faint);
+}
+
+.quiz-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.quiz-review-title {
+  margin: 0;
+  font-size: var(--text-section);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.quiz-review-badge {
+  flex-shrink: 0;
+  font-size: var(--text-tag);
+  font-weight: 500;
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--ink) 6%, var(--paper-raised));
+  border-radius: var(--radius-pill);
   padding: var(--space-1) var(--space-3);
+}
+
+.quiz-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Flat, no shadow, tight padding/line-height - a dense reference card, not
+   prose. Distinct from the older 實戰考題 quiz's .quiz-review-item (shared
+   quizView.ts), which this screen no longer uses. */
+.quiz-review-card {
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
+  border-radius: var(--radius-panel);
+  padding: var(--space-3) var(--space-4);
+}
+
+.quiz-review-word {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-jp-serif);
+  font-weight: 700;
+  font-size: var(--text-body);
+  color: var(--ink);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.quiz-review-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  line-height: 1.4;
+}
+
+.quiz-review-row-label {
+  flex-shrink: 0;
+  width: 4.4em;
+  white-space: nowrap;
+  font-size: var(--text-caption);
+  color: var(--ink-faint);
+}
+
+.quiz-review-wrong {
+  font-size: var(--text-caption);
+  color: var(--accent);
+  text-decoration: line-through;
+}
+
+.quiz-review-correct {
+  font-size: var(--text-caption);
+  color: var(--ink);
 }
 
 .quiz-finished-actions {
@@ -206,17 +324,18 @@
   margin-top: var(--space-2);
 }
 
-.quiz-finished-actions .btn {
-  width: 100%;
+.quiz-finished-actions .btn--secondary {
+  flex: 1;
 }
 
+/* Two-thirds of the row's width, the primary action's visual weight. */
 .quiz-finished-action {
-  flex: 1.4;
+  flex: 2;
   display: flex;
 }
 
-.quiz-finished-action .btn {
-  width: 100%;
+.quiz-finished-action .btn--primary {
+  flex: 1;
 }
 
 /* Deliberately flat/no-shadow like the page's other non-interactive info

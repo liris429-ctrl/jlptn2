@@ -115,20 +115,38 @@ function renderExhausted(): HTMLElement {
   ]);
 }
 
-/** Round 1's finished screen: the once-a-day celebration (big score, streak
- * pill) plus a full wrong-answer review. Its continue action is synchronous
+/** Round 1's finished screen: the once-a-day celebration - a flat, shadow-
+ * free achievement panel (big check icon, title, score/streak stat pair)
+ * plus a compact wrong-answer review. Its continue action is synchronous
  * when there are wrongs to retry (no weak-pool padding - see
  * retryWrongOnly()); only the wrong===0 fallback needs an async preview. */
-function renderMainFinished(state: TodayQuizState, engine: TodayQuizEngine, title: string): HTMLElement {
+function renderMainFinished(state: TodayQuizState, engine: TodayQuizEngine): HTMLElement {
   const correctCount = state.answers.filter((a) => a.correct).length;
   const total = state.answers.length;
   const wrongAnswers = state.answers.filter((a) => !a.correct);
+  const accuracyPct = Math.round((correctCount / total) * 100);
 
-  const streakBadge = el("div", { className: "quiz-streak-badge" }, ["🔥 連續天數更新中…"]);
+  const checkIcon = el("span", { className: "quiz-celebrate-icon", "aria-hidden": "true" });
+  checkIcon.innerHTML = TODAY_ICONS.check;
+
+  const streakNumber = el("p", { className: "quiz-stat-number quiz-stat-number--accent" }, ["…"]);
   void getStreak().then((streak) => {
-    streakBadge.textContent = "";
-    streakBadge.append("🔥 ", el("span", {}, [`連續 ${streak} 天`]));
+    streakNumber.textContent = `${streak}`;
   });
+
+  const topSection = el("div", { className: "quiz-celebrate-top" }, [
+    el("div", { className: "quiz-celebrate-header" }, [
+      checkIcon,
+      el("p", { className: "quiz-celebrate-title" }, ["哦哇，今日挑戰完成！"]),
+    ]),
+    el("div", { className: "quiz-stats-row" }, [
+      el("div", { className: "quiz-stat-box" }, [
+        el("p", { className: "quiz-stat-number" }, [`${correctCount}`, el("span", {}, [`/${total}`])]),
+        el("p", { className: "quiz-stat-caption" }, [`正確率 ${accuracyPct}%`]),
+      ]),
+      el("div", { className: "quiz-stat-box" }, [streakNumber, el("p", { className: "quiz-stat-caption" }, ["連續學習"])]),
+    ]),
+  ]);
 
   const backBtn = el("button", { className: "btn btn--secondary", type: "button" }, ["回今日"]);
   backBtn.addEventListener("click", () => navigate("/today"));
@@ -136,7 +154,7 @@ function renderMainFinished(state: TodayQuizState, engine: TodayQuizEngine, titl
   const actionArea = el("div", { className: "quiz-finished-action" });
   if (wrongAnswers.length > 0) {
     const retryBtn = el("button", { className: "btn btn--primary", type: "button" }, [
-      `再練這 ${wrongAnswers.length} 個錯題`,
+      `再練習這 ${wrongAnswers.length} 個錯題`,
     ]);
     retryBtn.addEventListener("click", () => engine.retryWrongOnly());
     actionArea.append(retryBtn);
@@ -153,20 +171,31 @@ function renderMainFinished(state: TodayQuizState, engine: TodayQuizEngine, titl
     });
   }
 
-  const children: (Node | string)[] = [
-    el("p", { className: "quiz-round1-label" }, [title, " 完成"]),
-    el("p", { className: "quiz-round1-score" }, [`${correctCount}`, el("span", {}, [`/${total}`])]),
-    streakBadge,
-  ];
+  const children: (Node | string)[] = [topSection];
 
   if (wrongAnswers.length > 0) {
     const items = wrongAnswers.map((a) =>
-      el("div", { className: "quiz-review-item" }, [
-        el("p", { className: "quiz-question" }, [a.correctLabel]),
-        el("p", { className: "quiz-review-answer" }, [`正解：${a.correctText}；你選的是「${a.chosenLabel}」的語意`]),
+      el("div", { className: "quiz-review-card" }, [
+        el("p", { className: "quiz-review-word" }, [a.correctLabel]),
+        el("div", { className: "quiz-review-row" }, [
+          el("span", { className: "quiz-review-row-label" }, ["你的答案"]),
+          el("span", { className: "quiz-review-wrong" }, [a.chosenLabel]),
+        ]),
+        el("div", { className: "quiz-review-row" }, [
+          el("span", { className: "quiz-review-row-label" }, ["正確"]),
+          el("span", { className: "quiz-review-correct" }, [a.correctText]),
+        ]),
       ]),
     );
-    children.push(el("section", { className: "quiz-review" }, [el("h3", {}, ["答錯的題目"]), ...items]));
+    children.push(
+      el("section", { className: "quiz-review" }, [
+        el("div", { className: "quiz-review-header" }, [
+          el("h3", { className: "quiz-review-title" }, ["需要複習"]),
+          el("span", { className: "quiz-review-badge" }, [`${wrongAnswers.length} 個弱點`]),
+        ]),
+        el("div", { className: "quiz-review-list" }, items),
+      ]),
+    );
   }
 
   children.push(el("div", { className: "quiz-finished-actions" }, [backBtn, actionArea]));
@@ -222,6 +251,6 @@ function renderFinished(state: TodayQuizState, engine: TodayQuizEngine, title: s
   }
 
   return state.roundKind === "main"
-    ? renderMainFinished(state, engine, title)
+    ? renderMainFinished(state, engine)
     : renderExtraFinished(state, engine);
 }
