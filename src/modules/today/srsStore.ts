@@ -569,7 +569,16 @@ export async function drawExtraRoundPool(priorWrong: DrawnWord[], target: number
 export async function getYesterdayNewWords(): Promise<WordState[]> {
   const yesterday = addDays(getStudyDate(), -1);
   const allWords = await dbGetAll<WordState>(STORE_WORD_STATE);
-  return allWords.filter((w) => getStudyDate(w.firstSeenAt) === yesterday && w.recent.length > 0);
+  // recent.length > 0 alone isn't "tested yesterday" - recent only holds the
+  // most recent 10 events ever, with no day filter, so a word first seen
+  // yesterday but then heavily re-tested today (enough to push yesterday's
+  // own event out of the 10-slot window) would still pass a bare
+  // non-empty check even though nothing in `recent` actually happened
+  // yesterday anymore. Require at least one surviving event whose own
+  // timestamp falls on yesterday's study-date.
+  return allWords.filter(
+    (w) => getStudyDate(w.firstSeenAt) === yesterday && w.recent.some((e) => getStudyDate(e.ts) === yesterday),
+  );
 }
 
 function seededRandom(seed: string): number {

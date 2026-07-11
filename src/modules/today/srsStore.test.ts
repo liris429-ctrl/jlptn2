@@ -447,6 +447,20 @@ describe("getYesterdayNewWords", () => {
     expect(words.map((w) => w.id)).toEqual(["v-0"]);
     vi.restoreAllMocks();
   });
+
+  it("excludes a word once its own yesterday event has been pushed out of `recent` by heavy same-day retesting today", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 9, 12, 0));
+    await recordAnswer("vocab", "v-0", true, "quiz"); // firstSeenAt + one real event, both yesterday
+
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 10, 12, 0));
+    for (let i = 0; i < 10; i++) {
+      await recordAnswer("vocab", "v-0", true, "quiz"); // 10 more today - evicts yesterday's own event from `recent`
+    }
+
+    const words = await getYesterdayNewWords();
+    expect(words.map((w) => w.id)).not.toContain("v-0");
+    vi.restoreAllMocks();
+  });
 });
 
 describe("getDailyGrammarPick", () => {
