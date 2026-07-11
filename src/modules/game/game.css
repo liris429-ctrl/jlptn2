@@ -12,7 +12,6 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   background: var(--paper-raised);
-  box-shadow: var(--shadow-1);
   padding: var(--space-4);
   transition: box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
@@ -56,6 +55,11 @@
   margin: var(--space-1) 0 0;
 }
 
+/* Deliberate text-glyph exception, not an oversight - a single directional
+   character doesn't need a full SVG. Icon-size reference across the app:
+   .nav-icon 22px, .today-icon 18px, .hub-row-icon 24px,
+   .quiz-exhausted-icon 22px; this glyph and .favorite-toggle's star
+   (layout.css) are the only two that stay text instead of inlined SVG. */
 .hub-row-chevron {
   flex-shrink: 0;
   color: var(--ink-faint);
@@ -194,7 +198,6 @@
   border-radius: var(--radius-input);
   border: 1px solid var(--line-strong);
   background: var(--paper-raised);
-  box-shadow: var(--shadow-1);
   line-height: 1.25;
   /* Same gentle spring-out curve as .result-card/.hub-row elsewhere in the app,
      not a plain "ease" - keeps this screen's everyday hover/select feel from

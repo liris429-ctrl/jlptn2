@@ -2,6 +2,7 @@ import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
 import { getStreak, getYesterdayNewWords } from "./srsStore.ts";
 import { TodayQuizEngine, type TodayQuizState } from "./todayQuizEngine.ts";
+import { TODAY_ICONS } from "./todayIcons.ts";
 
 function mountQuizView(
   container: HTMLElement,
@@ -105,8 +106,10 @@ function renderExhausted(): HTMLElement {
     event.preventDefault();
     navigate("/game/match");
   });
+  const icon = el("span", { className: "quiz-exhausted-icon", "aria-hidden": "true" });
+  icon.innerHTML = TODAY_ICONS.thumbUp;
   return el("div", { className: "quiz-exhausted" }, [
-    el("p", { className: "quiz-exhausted-emoji" }, ["👍"]),
+    icon,
     el("p", { className: "quiz-exhausted-text" }, ["今天的弱點都過一輪了"]),
     link,
   ]);

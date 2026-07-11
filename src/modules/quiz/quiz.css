@@ -256,9 +256,18 @@
   padding-top: var(--space-3);
 }
 
-.quiz-exhausted-emoji {
-  font-size: 1.75rem;
-  margin: 0;
+/* Hand-inlined Tabler SVG, not a native emoji - matches the app's icon
+   discipline elsewhere (nav/today icons) instead of a platform-dependent
+   glyph that can't take --ink-soft or match stroke weight. */
+.quiz-exhausted-icon {
+  display: flex;
+  justify-content: center;
+  color: var(--ink-soft);
+}
+
+.quiz-exhausted-icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 .quiz-exhausted-text {

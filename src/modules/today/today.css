@@ -295,7 +295,6 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   background: var(--paper-raised);
-  box-shadow: var(--shadow-1);
   padding: var(--space-3) var(--space-4);
   cursor: pointer;
   touch-action: manipulation;

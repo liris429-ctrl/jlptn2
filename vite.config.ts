@@ -14,7 +14,7 @@ export default defineConfig({
         orientation: "portrait",
         start_url: "/",
         scope: "/",
-        theme_color: "#0a182c",
+        theme_color: "#c1442c",
         background_color: "#f1f2ec",
         // Transparent icons by design (no maskable variant) - the artwork keeps
         // its own alpha background rather than a solid backdrop being added.
