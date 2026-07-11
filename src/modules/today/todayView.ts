@@ -538,10 +538,17 @@ function renderWeakItem(w: WordState, handle: WeakItemHandle): HTMLElement {
       event.stopPropagation();
       handle.dismiss(w);
     });
-    const revealRow = el("div", { className: "today-weak-reveal-row" }, [
-      el("p", { className: "today-weak-reveal" }, [revealText]),
-      rememberBtn,
-    ]);
+    const revealText_ = el("p", { className: "today-weak-reveal" }, [revealText]);
+    // Grammar meanings run long enough to wrap - a side-by-side button fights
+    // the text for width there, so it gets its own full-width text row plus a
+    // right-aligned action row underneath instead of vocab's single-line pair.
+    const revealRow =
+      w.kind === "grammar"
+        ? el("div", { className: "today-weak-reveal-row today-weak-reveal-row--stacked" }, [
+            revealText_,
+            el("div", { className: "today-weak-reveal-actions" }, [rememberBtn]),
+          ])
+        : el("div", { className: "today-weak-reveal-row" }, [revealText_, rememberBtn]);
     item.append(revealRow);
   }
 

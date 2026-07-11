@@ -496,15 +496,31 @@
 
 /* Indented (not flush with the row above) so the whole reveal - kana,
    meaning, button - reads as a child of the tapped word rather than a new
-   sibling row; align-items:flex-end pins the button to the reveal text's
-   own baseline instead of floating at the row's vertical center. */
+   sibling row. align-items:center keeps the button aligned to the text
+   block's own vertical center regardless of either one's height, rather
+   than pinning to a shared top or bottom edge. */
 .today-weak-reveal-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-2);
   padding: var(--space-2) 0 0 var(--space-4);
   border-top: 1px solid var(--line);
+}
+
+/* Grammar meanings run long enough to wrap multiple lines, where a side-by-
+   side button starts fighting the text for width and reads as misaligned
+   no matter which edge it's pinned to. Stack instead: full-width text on
+   top (free to wrap), a dedicated right-aligned action row underneath. */
+.today-weak-reveal-row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.today-weak-reveal-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .today-weak-reveal {
@@ -565,14 +581,29 @@
    pick to read, not a primary action, so it stays in the "flat info" card
    family rather than the "interactive CTA" one. */
 .today-daily-grammar-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  border-left: 3px solid var(--accent);
   border-radius: var(--radius-input);
   background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4) calc(var(--space-4) + 4px);
   cursor: pointer;
+}
+
+/* A real border-left can't get its own radius independent of the card's
+   corners, so its ends always read as hard right angles no matter how round
+   the card itself is. A positioned bar with its own border-radius gives it
+   genuine pill-shaped end caps that match the app's soft-card language. */
+.today-daily-grammar-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  width: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
 }
 
 /* Smaller than .today-weak-primary (--text-section) on purpose - this card
