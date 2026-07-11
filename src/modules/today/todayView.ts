@@ -336,6 +336,14 @@ function renderCountdownRow(data: TodayData, onChange: () => void): HTMLElement 
     return el("div", { className: "today-countdown-row" }, [trigger, input]);
   }
 
+  // A past exam date makes `days` negative - `D-${days}` would silently
+  // concatenate into "D--1" (the template's own "-" plus the number's own
+  // sign). Once the date's in the past there's no meaningful countdown left
+  // to show anyway, so drop it entirely rather than patch the sign.
+  if (data.days != null && data.days < 0) {
+    return el("div", { className: "today-countdown-row" }, [el("span", {}, [`已過考期・${data.phase.label}`])]);
+  }
+
   return el("div", { className: "today-countdown-row" }, [
     el("span", {}, ["N2 まで ", el("span", { className: "today-countdown-days" }, [`D-${data.days}`])]),
     el("span", {}, [`・${data.phase.label}`]),
@@ -500,7 +508,7 @@ function renderWrongCard(w: WordState, handle: WrongCardHandle): HTMLElement {
   }
 
   const head = el("div", { className: "today-wrong-head" }, [
-    el("span", { className: "result-kind" }, [kindLabel]),
+    el("span", { className: "today-wrong-kind" }, [kindLabel]),
     el("span", { className: "today-wrong-primary" }, [primaryText]),
     el("span", { className: "today-wrong-count" }, [`×${recentWrongCount(w)}`]),
   ]);
