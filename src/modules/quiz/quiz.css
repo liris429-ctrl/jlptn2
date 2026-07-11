@@ -78,14 +78,21 @@
   background: var(--accent-soft);
 }
 
+/* opacity:1 explicitly overrides the disabled dimming (base.css's
+   :where(button:disabled)) - these options are disabled once answered, but
+   the correct/wrong verdict itself must render at full strength, not
+   through a 0.45-opacity haze. .quiz-option--dim (below) is the one that's
+   actually supposed to fade. */
 .quiz-option--correct {
   border-color: var(--success);
   background: color-mix(in srgb, var(--success) 12%, var(--paper-raised));
+  opacity: 1;
 }
 
 .quiz-option--wrong {
   border-color: var(--danger);
   background: color-mix(in srgb, var(--danger) 12%, var(--paper-raised));
+  opacity: 1;
 }
 
 .quiz-option--dim {
@@ -230,7 +237,11 @@
   font-size: var(--text-body);
 }
 
+/* Tier 1 (same role as today.css's .today-main-cta-continue - the one
+   thing to do on this screen): full hover+active feedback. position:relative
+   + ::after widens the tap target to 44px (see layout.css's .chip comment). */
 .quiz-continue-chip {
+  position: relative;
   flex-shrink: 0;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill);
@@ -239,10 +250,28 @@
   font-size: var(--text-caption);
   font-weight: 600;
   padding: var(--space-1) var(--space-3);
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+}
+
+.quiz-continue-chip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
 }
 
 .quiz-continue-chip:hover {
   border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.quiz-continue-chip:active {
+  transform: scale(0.96);
 }
 
 .quiz-exhausted {

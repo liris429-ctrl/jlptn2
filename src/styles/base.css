@@ -63,14 +63,21 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+/* :where() zeroes this rule's specificity (0,0,0) instead of the normal
+   0,1,1 a bare button:disabled would carry - a single component class like
+   .game-cell--matched or .quiz-option--correct (0,1,0) can then always win
+   outright, with no compound-selector workaround needed. Without this,
+   .game-cell--matched's own `opacity: 0` (game.css) used to lose to this
+   rule's 0.45, so "matched" cells rendered as faded instead of vanished. */
+:where(button:disabled) {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
 button:focus-visible,
 input:focus-visible,
-a:focus-visible {
+a:focus-visible,
+[role="button"]:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -82,27 +89,42 @@ a:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px;
   border-radius: var(--radius-pill);
   padding: var(--space-2) var(--space-4);
   font-size: var(--text-caption);
   font-weight: 600;
-  transition: opacity 0.15s ease, transform 0.12s ease;
+  transition: opacity 0.15s ease, transform 0.12s ease, background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
+/* Tier 1 (primary action): hover deepens the fill, active gives a real
+   physical-press feel - the strongest feedback tier in the app. */
 .btn--primary {
   border: none;
   background: var(--accent);
   color: var(--paper-raised);
 }
 
+.btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 90%, black);
+}
+
+.btn--primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Tier 2 (secondary action): hover only (border previews --accent, same
+   vocabulary as .chip/.quiz-option) - no active-press feedback, this isn't
+   the primary action on the screen. */
 .btn--secondary {
   border: 1px solid var(--line-strong);
   background: var(--paper-raised);
   color: var(--ink);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  border-color: var(--accent);
 }
 
 a {

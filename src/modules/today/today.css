@@ -19,17 +19,44 @@
   flex: 1;
 }
 
+/* Tier 3 (low priority, list-adjacent action): minimal feedback only - a
+   faint background tint on hover, no active/shadow/transform. position:
+   relative + ::after widens the tap target to 44px without the button's own
+   box growing (see layout.css's .chip comment for the pattern). */
 .today-banner-action {
+  position: relative;
   flex-shrink: 0;
   border: none;
   background: none;
   /* --accent-ink (not --accent) - text-on-tint needs the darker/more-saturated
      variant to clear WCAG AA (4.5:1); --accent itself only reaches ~4.1:1
      against this tinted background, same reasoning as .filter-toggle--active
-     and .chip:hover elsewhere in the app. */
+     and .chip:hover elsewhere in the app. The hover tint below uses
+     --accent-ink too (as a background, not text) for the same reason - it
+     must stay a background-only signal, not push the button's actual hue
+     toward the AA-failing --accent. */
   color: var(--accent-ink);
   font-weight: 600;
   font-size: var(--text-caption);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-tag);
+  transition: background-color 0.15s ease;
+}
+
+.today-banner-action::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+}
+
+.today-banner-action:hover {
+  background: color-mix(in srgb, var(--accent-ink) 10%, transparent);
 }
 
 .today-icon {
@@ -220,7 +247,12 @@
   font-size: var(--text-caption);
 }
 
+/* Tier 1 (this card's own primary action - "再練10題" is the only thing
+   you can do from the 已完成 receipt): full hover+active feedback.
+   position:relative + ::after widens the tap target to 44px without
+   growing the pill itself (see layout.css's .chip comment). */
 .today-main-cta-continue {
+  position: relative;
   flex-shrink: 0;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill);
@@ -228,10 +260,28 @@
   color: var(--accent-ink);
   font-size: var(--text-caption);
   padding: var(--space-1) var(--space-3);
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+}
+
+.today-main-cta-continue::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
 }
 
 .today-main-cta-continue:hover {
   border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.today-main-cta-continue:active {
+  transform: scale(0.96);
 }
 
 .today-section-title {
@@ -374,7 +424,13 @@
    self-grade gesture is discoverable, not guessed at. Success-tinted since
    tapping it is a positive self-report ("I remembered"), consistent with
    --success being reserved for outcome feedback (tokens.css). */
+/* Tier 1 (the affirmative self-report action of this card - the whole
+   point of expanding a wrong-word card): full hover+active feedback, own
+   success hue kept (semantic, not decorative - same reasoning as
+   .occlude-btn--remember). position:relative + ::after widens the tap
+   target to 44px (see layout.css's .chip comment). */
 .today-wrong-remember {
+  position: relative;
   flex-shrink: 0;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill);
@@ -382,10 +438,27 @@
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-tag);
   color: var(--success);
+  transition: border-color 0.15s ease, transform 0.12s ease;
+}
+
+.today-wrong-remember::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
 }
 
 .today-wrong-remember:hover:not(:disabled) {
   border-color: var(--success);
+}
+
+.today-wrong-remember:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .today-empty {

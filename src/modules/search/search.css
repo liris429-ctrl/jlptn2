@@ -32,6 +32,7 @@
 }
 
 .level-segment {
+  position: relative;
   flex: 1;
   text-align: center;
   padding: var(--space-2) var(--space-2);
@@ -41,6 +42,26 @@
   color: var(--ink-soft);
   border-radius: var(--radius-pill);
   transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* 44px tap-target expansion via ::after - see layout.css's .chip comment
+   for why this pattern exists instead of just adding padding. */
+.level-segment::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+}
+
+/* Tier 2: hover only, a soft background hint distinct from the solid
+   shadowed capsule of --active - the two must stay visually different. */
+.level-segment:hover:not(.level-segment--active) {
+  background: color-mix(in srgb, var(--paper-raised) 50%, transparent);
 }
 
 .level-segment--active {
@@ -282,6 +303,7 @@
 }
 
 .occlude-block {
+  position: relative;
   height: 1.1em;
   min-width: 4ch;
   border: none;
@@ -289,6 +311,19 @@
   background: var(--line-strong);
   cursor: pointer;
   padding: 0;
+}
+
+/* 44px tap-target expansion via ::after - see layout.css's .chip comment. */
+.occlude-block::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
 }
 
 .occlude-block:hover {
@@ -300,13 +335,37 @@
   gap: var(--space-2);
 }
 
+/* Tier 1 (remember/forget is the whole point of 暗記模式 - it's the primary
+   action of this row, not a minor toggle): gets the same physical-press
+   active feedback as .btn--primary. Hover keeps its own success/danger hue
+   per variant rather than switching to --accent, since that hue is the
+   actual semantic signal here (remember vs forget), not decoration. */
 .occlude-btn {
+  position: relative;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill);
   background: var(--paper-raised);
   padding: var(--space-1) var(--space-2);
   font-size: var(--text-tag);
   color: var(--ink-soft);
+  transition: transform 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+/* 44px tap-target expansion via ::after - see layout.css's .chip comment. */
+.occlude-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+}
+
+.occlude-btn:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .occlude-btn--remember:hover {

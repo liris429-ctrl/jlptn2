@@ -46,7 +46,19 @@
   padding: var(--space-2) var(--space-2) max(var(--space-3), env(safe-area-inset-bottom));
   color: var(--ink-faint);
   border-top: 2px solid transparent;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+/* Tier 1 (primary navigation): a light background tint on hover, a real
+   press-scale on active - the persistent nav deserves the same feedback
+   strength as a primary CTA, not less. */
+.nav-tab:hover:not(.nav-tab--active) {
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.nav-tab:active {
+  transform: scale(0.96);
 }
 
 .nav-tab--active {
@@ -166,23 +178,41 @@
   margin: var(--space-2) 0 var(--space-4);
 }
 
+/* position:relative + a transparent ::after is this app's pattern for
+   widening a dense pill's tap target to 44px without growing its visible
+   box (padding would inflate the background and break the tight chip-row
+   density) - see also .occlude-btn/.level-segment/.today-*-continue etc.,
+   which reuse the exact same ::after shape. */
 .chip {
+  position: relative;
   border: 1px solid var(--line-strong);
   background: var(--paper-raised);
   border-radius: var(--radius-pill);
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-caption);
   color: var(--ink-soft);
-  transition: transform 0.12s ease, border-color 0.12s ease;
+  transition: border-color 0.12s ease;
 }
 
+.chip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+}
+
+/* Tier 2 (secondary toggle/filter): hover only - a thin accent border
+   preview, same vocabulary as .quiz-option/.btn--secondary. No active-press
+   effect; .filter-toggle--active already owns the "selected" signal, a
+   press-scale on top of it would be a second, redundant state. */
 .chip:hover {
   border-color: var(--accent);
   color: var(--accent-ink);
-}
-
-.chip:active {
-  transform: scale(0.97);
 }
 
 .chip--grammar {
