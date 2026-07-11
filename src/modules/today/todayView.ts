@@ -355,8 +355,8 @@ function renderCountdownRow(data: TodayData, onChange: () => void): HTMLElement 
 /** One card, three states it "becomes": 未開始/進行中 share the same soft
  * task-card shell (big remaining-count number + dot progress bar, "開始" vs
  * "繼續" on the button) -> 已完成 swaps to a success-tinted receipt variant
- * of the same shell, with "再練10題" as its own secondary entry point - see
- * todayQuizEngine.ts's start() for how that transparently becomes a
+ * of the same shell, with "再練N個弱點" as its own secondary entry point -
+ * see todayQuizEngine.ts's start() for how that transparently becomes a
  * weak-fill 續攤 round. */
 function renderMainCta(data: TodayData): HTMLElement {
   if (data.inProgress != null) {
@@ -399,6 +399,11 @@ function renderMainCtaDone(data: TodayData): HTMLElement {
   // "再練10題" here used to lie whenever the actual weak+wrong pool came up
   // short (or empty), most visibly right after a round with several wrong
   // answers, since drawExtraRoundPool's honest count can be much smaller.
+  // "個弱點" (not "題"), matching todayQuizView.ts's own wording - a small
+  // number here is otherwise easy to misread as "the round got cut short"
+  // rather than "this is genuinely every weak point you have right now"
+  // (most visible for a new user with little history, where there's no
+  // other weak-pool padding to round it up toward 10).
   const continueLink = el("button", { className: "today-task-continue", type: "button" }, ["…"]);
   continueLink.disabled = true;
   continueLink.addEventListener("click", (event) => {
@@ -410,7 +415,7 @@ function renderMainCtaDone(data: TodayData): HTMLElement {
       continueLink.textContent = "今天的弱點都練過了";
       return;
     }
-    continueLink.textContent = `再練 ${count} 題`;
+    continueLink.textContent = `再練 ${count} 個弱點`;
     continueLink.disabled = false;
   });
 
