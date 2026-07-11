@@ -538,8 +538,32 @@ export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): P
 }
 
 /**
+ * Every word whose most recent attempt *today* was wrong - the cold-start
+ * equivalent of an in-memory round's own wrongAsDrawnWords(), for callers
+ * with no just-finished engine instance to ask (the home page's continue
+ * button is a fresh navigation, not a same-session retry). Deliberately not
+ * gated by WEAK_MIN_SEEN like getWeakWords(): a word missed for the first or
+ * second time ever is exactly the kind of mistake this round exists to
+ * resurface today, not just once it's been seen 3+ times. "Most recent
+ * today" (not "any event today") so a word that was wrong then corrected
+ * later the same day doesn't linger as if still unresolved.
+ */
+export async function getTodayWrongWords(): Promise<DrawnWord[]> {
+  const today = getStudyDate();
+  const all = await dbGetAll<WordState>(STORE_WORD_STATE);
+  return all
+    .filter((w) => {
+      const todaysEvents = w.recent.filter((e) => getStudyDate(e.ts) === today);
+      const last = todaysEvents[todaysEvents.length - 1];
+      return last != null && last.r === 0;
+    })
+    .map((w) => ({ kind: w.kind, id: w.id }));
+}
+
+/**
  * Composes a 續攤 (extra) round: `priorWrong` first (the caller's own
- * just-finished round's wrong answers, when it has any), padded with
+ * just-finished round's wrong answers, when it has any - see
+ * getTodayWrongWords() for the cold-start equivalent), padded with
  * weak-pool candidates up to `target` - no new words, and excluding anything
  * already served today (and `priorWrong` itself, so it's never double-
  * counted). Pure/read-only: does not mark the result as served - the caller
@@ -548,11 +572,26 @@ export async function drawTodayPool(counts: PoolCounts, learnedUpTo?: number): P
  * Naturally returns fewer than `target` (down to empty) once both the wrong
  * list and the weak pool run dry - "池子枯竭時自然收尾", not an error case.
  */
-export async function drawExtraRoundPool(priorWrong: DrawnWord[], target: number): Promise<DrawnWord[]> {
+export async function drawExtraRoundPool(priorWrongIn: DrawnWord[], target: number): Promise<DrawnWord[]> {
+  // Clamped defensively: callers like getTodayWrongWords() can return more
+  // than target items (several rounds' worth of mistakes in one day), and
+  // target is meant to be a real cap on the round size, not just a
+  // fill-up-to suggestion.
+  const priorWrong = priorWrongIn.slice(0, target);
   const served = await readServedTodayIds();
   const priorKeys = new Set(priorWrong.map((w) => makeKey(w.kind, w.id)));
+  const today = getStudyDate();
   const weakCandidates = (await getWeakWords())
-    .filter((w) => !served.has(w.key) && !priorKeys.has(w.key))
+    .filter((w) => !priorKeys.has(w.key))
+    // A word served today is normally excluded (already asked in an earlier
+    // round today - keeps later rounds varied instead of repeating), but not
+    // if today's exposure included a wrong answer: re-surfacing a fresh
+    // mistake in the same day is the whole point of an SRS "again" queue, so
+    // it must stay eligible here rather than vanishing until tomorrow just
+    // because it was already served once (e.g. a word missed in round 1
+    // must still be able to appear when "再練N個" is pressed from the home
+    // page later, not just via the same-session retryWrongOnly() button).
+    .filter((w) => !served.has(w.key) || w.recent.some((e) => e.r === 0 && getStudyDate(e.ts) === today))
     .map((w): DrawnWord => ({ kind: w.kind, id: w.id }));
   const needed = Math.max(0, target - priorWrong.length);
   const fill = sample(weakCandidates, Math.min(needed, weakCandidates.length));

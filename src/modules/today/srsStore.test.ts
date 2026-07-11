@@ -349,15 +349,47 @@ describe("markWordsServedToday / drawExtraRoundPool", () => {
     expect(composed).toHaveLength(2);
   });
 
-  it("excludes already-served words from the weak-pool fill", async () => {
-    for (const id of ["v-0", "v-1", "v-2"]) {
+  it("excludes an already-served word when today's own exposure was correct", async () => {
+    for (const id of ["v-1", "v-2"]) {
       await recordAnswer("vocab", id, false, "quiz");
       await recordAnswer("vocab", id, false, "quiz");
       await recordAnswer("vocab", id, false, "quiz");
     }
+    // Weak from yesterday's wrongs (mastery stays well under the 0.6
+    // ceiling even after today's single correct answer), but nothing wrong
+    // happened today - this is the "don't hammer something you just got
+    // right" case the served-today exclusion exists for.
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 1, 12, 0));
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 2, 12, 0));
+    await recordAnswer("vocab", "v-0", true, "quiz");
     await markWordsServedToday([{ kind: "vocab", id: "v-0" }]);
     const composed = await drawExtraRoundPool([], 10);
     expect(composed.map((w) => w.id)).not.toContain("v-0");
+    vi.restoreAllMocks();
+  });
+
+  // Regression: drawExtraRoundPool used to exclude ANY word served today,
+  // even one the user just got wrong in round 1 - so the home page's
+  // "再練N題" button (a cold navigation with no in-memory priorWrong to
+  // inherit from a just-finished round) could never resurface today's own
+  // mistakes, shrinking to almost nothing right after a round with several
+  // wrong answers.
+  it("does NOT exclude an already-served word that was answered wrong today", async () => {
+    for (const id of ["v-1", "v-2"]) {
+      await recordAnswer("vocab", id, false, "quiz");
+      await recordAnswer("vocab", id, false, "quiz");
+      await recordAnswer("vocab", id, false, "quiz");
+    }
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await markWordsServedToday([{ kind: "vocab", id: "v-0" }]);
+    const composed = await drawExtraRoundPool([], 10);
+    expect(composed.map((w) => w.id)).toContain("v-0");
   });
 
   it("naturally shrinks to empty once priorWrong and the weak pool both run dry", async () => {
@@ -378,10 +410,18 @@ describe("markWordsServedToday / drawExtraRoundPool", () => {
   });
 
   it("resets the served-today record on a new study day", async () => {
+    // Weak from an earlier wrong streak (so it's pool-eligible independent
+    // of today's own result), then a correct answer specifically on day 1 -
+    // isolates the day-boundary reset from the separate wrong-today
+    // carve-out covered above.
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 6, 30, 12, 0));
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", false, "quiz");
+
     vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 1, 12, 0));
-    await recordAnswer("vocab", "v-0", false, "quiz");
-    await recordAnswer("vocab", "v-0", false, "quiz");
-    await recordAnswer("vocab", "v-0", false, "quiz");
+    await recordAnswer("vocab", "v-0", true, "quiz");
     await markWordsServedToday([{ kind: "vocab", id: "v-0" }]);
     expect((await drawExtraRoundPool([], 10)).map((w) => w.id)).not.toContain("v-0");
 

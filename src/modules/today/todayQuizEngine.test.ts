@@ -46,6 +46,7 @@ const drawExtraRoundPoolMock = vi.fn(async (priorWrong: DrawnWord[], _target: nu
 const markWordsServedTodayMock = vi.fn(async (_words: DrawnWord[]) => {});
 const recordFirstRoundResultMock = vi.fn(async (_correct: number, _total: number) => {});
 const getTodayFirstRoundResultMock = vi.fn(async (): Promise<{ correct: number; total: number } | null> => null);
+const getTodayWrongWordsMock = vi.fn(async (): Promise<DrawnWord[]> => []);
 const metaStore = new Map<string, unknown>();
 
 vi.mock("./srsStore.ts", () => ({
@@ -62,6 +63,7 @@ vi.mock("./srsStore.ts", () => ({
   markWordsServedToday: (words: DrawnWord[]) => markWordsServedTodayMock(words),
   recordFirstRoundResult: (correct: number, total: number) => recordFirstRoundResultMock(correct, total),
   getTodayFirstRoundResult: () => getTodayFirstRoundResultMock(),
+  getTodayWrongWords: () => getTodayWrongWordsMock(),
 }));
 
 const { TodayQuizEngine, getInProgressRoundSummary } = await import("./todayQuizEngine.ts");
@@ -80,6 +82,8 @@ beforeEach(() => {
   recordFirstRoundResultMock.mockClear();
   getTodayFirstRoundResultMock.mockReset();
   getTodayFirstRoundResultMock.mockResolvedValue(null);
+  getTodayWrongWordsMock.mockReset();
+  getTodayWrongWordsMock.mockResolvedValue([]);
   metaStore.clear();
 });
 
@@ -193,6 +197,30 @@ describe("TodayQuizEngine.start", () => {
     expect(latest.roundKind).toBe("extra");
     expect(latest.questions.map((q: { id: string }) => q.id)).toEqual(["v-1"]);
     expect(drawTodayPoolMock).not.toHaveBeenCalled();
+  });
+
+  // Regression: a cold start (e.g. the home page's "已完成" continue button,
+  // a fresh navigation with no in-memory round to ask wrongAsDrawnWords())
+  // used to pass an empty priorWrong, so today's own mistakes could only
+  // surface via getWeakWords()'s WEAK_MIN_SEEN-gated pool - a word missed
+  // for the first time today (seen < 3) would silently never come back up
+  // until tomorrow. It must ask getTodayWrongWords() instead.
+  it("seeds a cold-start extra round with today's wrong words, not an empty priorWrong", async () => {
+    getTodayFirstRoundResultMock.mockResolvedValue({ correct: 5, total: 10 });
+    getTodayWrongWordsMock.mockResolvedValue([
+      { kind: "vocab", id: "v-9" },
+      { kind: "vocab", id: "v-8" },
+    ]);
+    const engine = new TodayQuizEngine();
+    await engine.start();
+    expect(getTodayWrongWordsMock).toHaveBeenCalled();
+    expect(drawExtraRoundPoolMock).toHaveBeenCalledWith(
+      [
+        { kind: "vocab", id: "v-9" },
+        { kind: "vocab", id: "v-8" },
+      ],
+      10,
+    );
   });
 
   it("resumes an in-progress round from earlier today instead of drawing a new one", async () => {

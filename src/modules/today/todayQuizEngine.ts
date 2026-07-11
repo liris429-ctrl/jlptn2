@@ -9,6 +9,7 @@ import {
   getMeta,
   getStudyDate,
   getTodayFirstRoundResult,
+  getTodayWrongWords,
   markWordsServedToday,
   recordAnswer,
   recordFirstRoundResult,
@@ -136,6 +137,15 @@ export async function getInProgressRoundSummary(): Promise<{ currentIndex: numbe
   if (snapshot.roundKind !== "main") return null;
   if (snapshot.answers.length >= snapshot.questions.length) return null;
   return { currentIndex: snapshot.answers.length, total: snapshot.questions.length };
+}
+
+/** Home page's "已完成" receipt reads this for its own continue button's
+ * label - the same composition a fresh start()'s cold-start branch would
+ * draw (today's still-wrong words first, weak-pool padded up to
+ * QUESTION_COUNT), so the button never promises a bigger number than what's
+ * actually left. */
+export async function previewFreshContinueCount(): Promise<number> {
+  return (await drawExtraRoundPool(await getTodayWrongWords(), QUESTION_COUNT)).length;
 }
 
 function buildVocabQuestion(entry: VocabEntry, allVocab: VocabEntry[]): TodayQuestion {
@@ -315,7 +325,10 @@ export class TodayQuizEngine {
     if (!firstRoundDone) {
       await this.startMainRound();
     } else {
-      await this.startExtraRound([]);
+      // A cold start (no in-memory answers to ask wrongAsDrawnWords() for)
+      // still prioritizes whatever's currently wrong today - see
+      // getTodayWrongWords() for why this can't just reuse getWeakWords().
+      await this.startExtraRound(await getTodayWrongWords());
     }
   }
 

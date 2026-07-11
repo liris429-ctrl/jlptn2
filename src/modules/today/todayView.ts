@@ -24,7 +24,7 @@ import {
   type WeekSummary,
   type WordState,
 } from "./srsStore.ts";
-import { consumePendingCelebration, getInProgressRoundSummary } from "./todayQuizEngine.ts";
+import { consumePendingCelebration, getInProgressRoundSummary, previewFreshContinueCount } from "./todayQuizEngine.ts";
 import { TODAY_ICONS } from "./todayIcons.ts";
 
 const ACCURACY_BAR_DAYS = 21;
@@ -395,10 +395,23 @@ function renderMainTaskCard(completed: number, total: number, buttonLabel: strin
 
 function renderMainCtaDone(data: TodayData): HTMLElement {
   const result = data.firstRoundResult!;
-  const continueLink = el("button", { className: "today-task-continue", type: "button" }, ["再練 10 題"]);
+  // Label starts as a loading placeholder, not a guessed number - a fixed
+  // "再練10題" here used to lie whenever the actual weak+wrong pool came up
+  // short (or empty), most visibly right after a round with several wrong
+  // answers, since drawExtraRoundPool's honest count can be much smaller.
+  const continueLink = el("button", { className: "today-task-continue", type: "button" }, ["…"]);
+  continueLink.disabled = true;
   continueLink.addEventListener("click", (event) => {
     event.stopPropagation();
     navigate("/today/quiz");
+  });
+  void previewFreshContinueCount().then((count) => {
+    if (count === 0) {
+      continueLink.textContent = "今天的弱點都練過了";
+      return;
+    }
+    continueLink.textContent = `再練 ${count} 題`;
+    continueLink.disabled = false;
   });
 
   return el("div", { className: "today-task-card today-task-card--done" }, [
