@@ -1,9 +1,11 @@
-import type { GrammarExample } from "../../data/schema.ts";
+import type { GrammarEntry, GrammarExample } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
 import { renderFavoriteToggle, renderMarkLearnedButton } from "./entryCard.ts";
 import { linkedVocabChips } from "./renderLinkedSentence.ts";
+
+const SENSE_LABELS = ["用法一", "用法二", "用法三", "用法四", "用法五"];
 
 export function renderGrammarDetailView(
   container: HTMLElement,
@@ -27,14 +29,31 @@ export function renderGrammarDetailView(
     el("h1", { className: "grammar-heading" }, [entry.pattern]),
     renderFavoriteToggle("grammar", entry.id, { large: true }),
   ]);
-  const meaning = el("p", { className: "grammar-meaning" }, [entry.meaning]);
 
-  const sections: HTMLElement[] = [backBtn, headingRow, meaning, renderMarkLearnedButton("grammar", entry.id)];
+  // Multi-sense entries (senses.length > 1, e.g. さえ's "even X" vs "as long
+  // as X" senses taught under separate lesson sub-groups) replace the single
+  // meaning paragraph + flat example list with one card per sense instead -
+  // otherwise there's no way to tell which example demonstrates which
+  // usage. Single-sense entries (the vast majority) are untouched.
+  const isMultiSense = entry.senses.length > 1;
 
+  const sections: HTMLElement[] = [backBtn, headingRow];
+  if (!isMultiSense) {
+    sections.push(el("p", { className: "grammar-meaning" }, [entry.meaning]));
+  }
+  sections.push(renderMarkLearnedButton("grammar", entry.id));
+
+  // Conjunction rules are one shared block regardless of sense count - they
+  // describe how the pattern attaches grammatically, not which meaning it
+  // carries, so there's no per-sense variant to split them into.
   if (entry.conjunctionRulesHtml || entry.conjunctionRules) {
     const box = el("div", { className: "conjunction-box" });
     box.innerHTML = entry.conjunctionRulesHtml ?? entry.conjunctionRules;
     sections.push(el("section", { className: "conjunction-section" }, [el("h2", {}, ["接続"]), box]));
+  }
+
+  if (isMultiSense) {
+    sections.push(renderSenses(entry, store));
   }
 
   if (entry.explanationJa) {
@@ -43,7 +62,7 @@ export function renderGrammarDetailView(
     sections.push(details);
   }
 
-  if (entry.examples.length > 0) {
+  if (!isMultiSense && entry.examples.length > 0) {
     sections.push(
       el("section", { className: "examples-section" }, [
         el("h2", {}, ["例句"]),
@@ -57,6 +76,29 @@ export function renderGrammarDetailView(
   }
 
   container.append(el("div", { className: "detail-page grammar-detail" }, sections));
+}
+
+/** One visually-distinct card per sense - accent-badged "用法一/用法二/..."
+ * label, its own definition, and only the examples that demonstrate it
+ * (sense.exampleIds), so a multi-sense point never reads as "one meaning,
+ * one grab-bag of examples" the way the single-sense layout would. */
+function renderSenses(entry: GrammarEntry, store: ReturnType<typeof getStoreSync>): HTMLElement {
+  const examplesById = new Map(entry.examples.map((ex) => [ex.id, ex]));
+  const cards = entry.senses.map((sense, i) => {
+    const examples = sense.exampleIds
+      .map((exId) => examplesById.get(exId))
+      .filter((ex): ex is GrammarExample => ex != null);
+    return el("div", { className: "sense-card" }, [
+      el("span", { className: "sense-badge" }, [SENSE_LABELS[i] ?? `用法${i + 1}`]),
+      el("p", { className: "sense-text" }, [sense.text]),
+      el(
+        "div",
+        { className: "sense-examples" },
+        examples.map((ex) => renderExample(ex, store)),
+      ),
+    ]);
+  });
+  return el("section", { className: "grammar-senses" }, cards);
 }
 
 function renderExample(example: GrammarExample, store: ReturnType<typeof getStoreSync>): HTMLElement {

@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { AdditionalNote, GrammarEntry, GrammarExample } from "../src/data/schema.ts";
+import type { AdditionalNote, GrammarEntry, GrammarExample, GrammarSense } from "../src/data/schema.ts";
 import { parseCsvRows, slugify } from "./lib/csv-utils.ts";
 import {
   furiganaBracketToRuby,
@@ -76,7 +76,78 @@ function buildExample(row: string[], entryId: string, index: number): GrammarExa
     furiganaRuby: furiganaBracketToRuby(cell(row, COL.reading)),
     cn: cell(row, COL.translation),
     detailedExplanationHtml: detailedHtml ? sanitizeHtml(detailedHtml) : undefined,
+    lessonSubgroup: cell(row, COL.lesson),
   };
+}
+
+interface LessonSubgroup {
+  lessonSubgroup: string;
+  rows: string[][];
+}
+
+/**
+ * Splits a pattern group's rows by their raw lesson label (e.g. さえ's 6 rows
+ * split into a 5A trio and a 5B trio - two distinct senses taught under
+ * separate sub-lessons upstream). Sorted by the label string itself (not
+ * left in CSV row order) so senses[0] is deterministically the
+ * alphabetically-first sub-group regardless of how the upstream rows happen
+ * to interleave.
+ */
+function groupRowsByLessonSubgroup(rows: string[][]): LessonSubgroup[] {
+  const order: string[] = [];
+  const groups = new Map<string, string[][]>();
+  for (const row of rows) {
+    const lessonSubgroup = cell(row, COL.lesson);
+    if (!groups.has(lessonSubgroup)) {
+      groups.set(lessonSubgroup, []);
+      order.push(lessonSubgroup);
+    }
+    groups.get(lessonSubgroup)!.push(row);
+  }
+  return [...order]
+    .sort((a, b) => a.localeCompare(b))
+    .map((lessonSubgroup) => ({ lessonSubgroup, rows: groups.get(lessonSubgroup)! }));
+}
+
+/**
+ * One sense per distinct lesson sub-group (see groupRowsByLessonSubgroup) -
+ * this is what makes multi-sense grammar points (さえ, に対して, に限って, ...)
+ * keep every sense instead of buildEntry's old firstNonEmpty(explanationChinese)
+ * silently discarding every sub-group after the first. Does NOT fix the
+ * separate "meaning/additionalNotes swapped at the source" defect some
+ * single-sub-group entries have - a sense built from a single sub-group's
+ * explanationChinese still faithfully carries over whatever that column
+ * says, wrong or not. That's handled separately (see overrides).
+ */
+function buildSenses(examples: GrammarExample[], subgroups: LessonSubgroup[]): GrammarSense[] {
+  const rawSenses = subgroups.map((sg) => ({
+    text: firstNonEmpty(sg.rows, COL.explanationChinese),
+    lessonSubgroup: sg.lessonSubgroup,
+    exampleIds: examples.filter((ex) => ex.lessonSubgroup === sg.lessonSubgroup).map((ex) => ex.id),
+  }));
+  return dedupeSensesByText(rawSenses);
+}
+
+/**
+ * Merges senses whose text is byte-for-byte identical - some points (e.g.
+ * ものか) are taught under two separate lesson sub-groups with the exact
+ * same definition repeated, which isn't a real second sense. Any difference
+ * at all, even a trailing clause, keeps them distinct rather than risking
+ * silently merging away a real nuance - only an exact match qualifies.
+ */
+function dedupeSensesByText(senses: GrammarSense[]): GrammarSense[] {
+  const order: string[] = [];
+  const byText = new Map<string, GrammarSense>();
+  for (const sense of senses) {
+    const existing = byText.get(sense.text);
+    if (existing) {
+      existing.exampleIds = [...existing.exampleIds, ...sense.exampleIds];
+      continue;
+    }
+    byText.set(sense.text, { ...sense });
+    order.push(sense.text);
+  }
+  return order.map((text) => byText.get(text)!);
 }
 
 function collectAdditionalNotes(rows: string[][]): AdditionalNote[] {
@@ -111,15 +182,19 @@ function buildEntry(group: RawGroup, idCounts: Map<string, number>): GrammarEntr
   const richFormationHtml = firstNonEmpty(group.rows, COL.richGrammarFormationHtml);
   const detailedFirstRow = firstNonEmpty(group.rows, COL.detailedExplanationHtml);
 
+  const examples = group.rows.map((row, i) => buildExample(row, id, i));
+  const senses = buildSenses(examples, groupRowsByLessonSubgroup(group.rows));
+
   return {
     id,
     pattern: group.pattern,
     conjunctionRules: firstNonEmpty(group.rows, COL.grammarFormation),
     conjunctionRulesHtml: richFormationHtml ? sanitizeHtml(richFormationHtml) : undefined,
-    meaning: firstNonEmpty(group.rows, COL.explanationChinese),
+    meaning: senses[0]!.text,
     explanationJa: firstNonEmpty(group.rows, COL.explanationJapanese) || undefined,
     lesson: firstNonEmpty(group.rows, COL.lesson) || undefined,
-    examples: group.rows.map((row, i) => buildExample(row, id, i)),
+    examples,
+    senses,
     additionalNotes: collectAdditionalNotes(group.rows),
   };
 }

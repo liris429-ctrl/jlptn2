@@ -30,6 +30,11 @@ export function convertGrammarEntry(entry: GrammarEntry): GrammarEntry {
         ? converter(example.detailedExplanationHtml)
         : example.detailedExplanationHtml,
     })),
+    // senses[0].text and meaning both trace back to the same pre-conversion
+    // source string (see parse-grammar-anki.ts's buildEntry), so converting
+    // each sense independently still leaves meaning === senses[0].text true
+    // after this step - no special-casing needed to keep the two in sync.
+    senses: entry.senses.map((sense) => ({ ...sense, text: converter(sense.text) })),
     additionalNotes: entry.additionalNotes?.map((note) => ({
       ...note,
       textZh: converter(note.textZh),

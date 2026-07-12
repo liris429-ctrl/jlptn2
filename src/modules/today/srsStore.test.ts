@@ -10,6 +10,7 @@ const grammar: GrammarEntry[] = Array.from({ length: 6 }, (_, i) => ({
   meaning: `意味${i}`,
   lesson: `第${i + 1}課`,
   examples: [],
+  senses: [{ text: `意味${i}`, lessonSubgroup: `第${i + 1}課`, exampleIds: [] }],
 }));
 
 const vocab: VocabEntry[] = Array.from({ length: 6 }, (_, i) => ({

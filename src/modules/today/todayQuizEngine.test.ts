@@ -24,6 +24,7 @@ const grammar: GrammarEntry[] = Array.from({ length: 4 }, (_, i) => ({
   conjunctionRules: "",
   meaning: `意味${i}`,
   examples: [],
+  senses: [{ text: `意味${i}`, lessonSubgroup: "", exampleIds: [] }],
 }));
 
 vi.mock("../../data/store.ts", () => ({

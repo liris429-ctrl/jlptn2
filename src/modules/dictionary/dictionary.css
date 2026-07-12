@@ -102,6 +102,57 @@
   font-size: var(--text-body);
 }
 
+/* Multi-sense grammar points (senses.length > 1). Generous gap between
+   cards - each sense needs to read as its own self-contained unit at a
+   glance, not blend into the one before/after it. */
+.grammar-senses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* A real bordered surface (not the flat ink-tint recipe .example-card/
+   .conjunction-box use) so nesting example-cards inside it doesn't blend
+   together - the border defines "this is one sense", the tint inside marks
+   "these are its examples". */
+.sense-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--paper-raised);
+  padding: var(--space-4);
+}
+
+.sense-badge {
+  align-self: flex-start;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: var(--text-caption);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+}
+
+.sense-text {
+  margin: 0;
+  font-size: var(--text-section);
+  color: var(--ink-soft);
+}
+
+.sense-examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Spacing here comes from .sense-examples' own gap, not the standalone
+   .example-card's margin-top rhythm (that's for a flat top-level list). */
+.sense-examples .example-card {
+  margin-top: 0;
+}
+
 /* margin-top removed - .detail-page's gap now supplies the space before this
    block, consistent with every other section instead of its own smaller value. */
 .explanation-ja {

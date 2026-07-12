@@ -8,6 +8,7 @@ const grammar: GrammarEntry[] = [
     conjunctionRules: "普通形+わけがない",
     meaning: "不可能～",
     examples: [],
+    senses: [{ text: "不可能～", lessonSubgroup: "", exampleIds: [] }],
   },
 ];
 

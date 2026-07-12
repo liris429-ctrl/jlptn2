@@ -129,6 +129,25 @@ export interface GrammarExample {
   /** Computed by scripts/link-vocab.ts. */
   vocabLinks?: VocabLink[];
   detailedExplanationHtml?: string;
+  /** The raw source lesson-subgroup label this example's row came from (e.g.
+   * "第21課 - 5A") - lets GrammarEntry.senses match each sense back to the
+   * examples that actually demonstrate it. Not meant for direct display. */
+  lessonSubgroup: string;
+}
+
+/**
+ * One distinct usage/meaning of a multi-sense grammar point (e.g. さえ has a
+ * "even X" analogy sense and a separate "as long as X" minimum-condition
+ * sense, taught under different lesson sub-groups 5A/5B upstream). Most
+ * entries have exactly one. See GrammarEntry.senses.
+ */
+export interface GrammarSense {
+  /** Clean, self-contained definition text for this one sense. */
+  text: string;
+  /** The raw lesson-subgroup label this sense was grouped from. */
+  lessonSubgroup: string;
+  /** ids into this entry's own examples[] that demonstrate this sense. */
+  exampleIds: string[];
 }
 
 /**
@@ -149,10 +168,17 @@ export interface GrammarEntry {
   pattern: string;
   conjunctionRules: string;
   conjunctionRulesHtml?: string;
+  /** = senses[0].text - kept as a plain string so every existing single-line
+   * consumer (search cards, weak-list reveal, search index, etc.) needs no
+   * change; only the quiz engine and the detail page read `senses` directly
+   * for multi-sense entries. */
   meaning: string;
   explanationJa?: string;
   lesson?: string;
   examples: GrammarExample[];
+  /** Always >= 1 entry. Length > 1 only for grammar points taught as
+   * multiple distinct senses under separate lesson sub-groups upstream. */
+  senses: GrammarSense[];
   additionalNotes?: AdditionalNote[];
   tags?: string[];
 }

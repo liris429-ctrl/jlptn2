@@ -9,6 +9,7 @@ function entry(id: string, lesson?: string): GrammarEntry {
     conjunctionRules: "",
     meaning: "",
     examples: [],
+    senses: [{ text: "", lessonSubgroup: lesson ?? "", exampleIds: [] }],
     lesson,
   };
 }
