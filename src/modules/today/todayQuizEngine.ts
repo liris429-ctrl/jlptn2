@@ -2,6 +2,13 @@ import type { GrammarEntry, VocabEntry } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import type { FavoriteKind } from "../favorites/favoritesStore.ts";
 import { sample, shuffle } from "../game/shuffle.ts";
+// Vite bundles this at build time (resolveJsonModule) - not part of the
+// grammar/vocab/quiz data store (data/store.ts), which only ever fetches
+// public/data/*.json at runtime; data-source/ is never served to the
+// browser. Cast through unknown: the JSON's inferred literal type doesn't
+// line up with ConfusableEntry's hand-written shape (e.g. the unrelated
+// `_meta` key), and this is read-only reference data, not re-validated here.
+import confusableDataRaw from "../../../data-source/enrichment/confusable.json";
 import {
   daysUntil,
   drawExtraRoundPool,
@@ -171,6 +178,73 @@ function buildVocabQuestion(entry: VocabEntry, allVocab: VocabEntry[]): TodayQue
   return { kind: "vocab", id: entry.id, stem: entry.kanji, correctLabel: entry.kanji, options, answerIndex };
 }
 
+interface ConfusableItem {
+  id: string;
+  _filtered?: boolean;
+}
+
+interface ConfusableEntry {
+  confusable?: ConfusableItem[];
+}
+
+const confusableData = confusableDataRaw as unknown as Record<string, ConfusableEntry>;
+
+const GRAMMAR_DISTRACTOR_TARGET = 3;
+
+/**
+ * Three-layer distractor selection, most-targeted first:
+ *   1. confusable.json's curated near-miss pairs for this exact id - skips
+ *      `_filtered:true` entries and any id not found in `allGrammar` by
+ *      exact string match (never substring/fuzzy: つつ/つつも/つつある are
+ *      three unrelated ids, see confusable-README.md's id de-dup warning).
+ *      Membership is checked against the live-loaded `allGrammar`, not a
+ *      separate whitelist file - the README itself says to derive the
+ *      whitelist from the actual build output, not trust a hand-maintained
+ *      copy.
+ *   2. Same 課次 (`lesson`) as a fallback for entries confusable.json has
+ *      little or no curated data for (13 ids in the source only have 1
+ *      curated distractor - README calls this out as needing a fallback).
+ *   3. The prior fully-random pool, only for whatever's still missing.
+ * Each layer excludes the entry itself, anything already picked by an
+ * earlier layer, and any candidate whose meaning happens to coincide with
+ * the correct answer's.
+ */
+function pickGrammarDistractors(entry: GrammarEntry, allGrammar: GrammarEntry[]): GrammarEntry[] {
+  const byId = new Map(allGrammar.map((g) => [g.id, g]));
+  const picked: GrammarEntry[] = [];
+  const pickedIds = new Set<string>([entry.id]);
+
+  const confusableItems = confusableData[entry.id]?.confusable ?? [];
+  for (const item of confusableItems) {
+    if (picked.length >= GRAMMAR_DISTRACTOR_TARGET) break;
+    if (item._filtered) continue;
+    if (pickedIds.has(item.id)) continue;
+    const candidate = byId.get(item.id);
+    if (!candidate || candidate.meaning === entry.meaning) continue;
+    picked.push(candidate);
+    pickedIds.add(candidate.id);
+  }
+
+  if (picked.length < GRAMMAR_DISTRACTOR_TARGET && entry.lesson) {
+    const sameLesson = allGrammar.filter(
+      (g) => g.lesson === entry.lesson && !pickedIds.has(g.id) && g.meaning !== entry.meaning,
+    );
+    const needed = GRAMMAR_DISTRACTOR_TARGET - picked.length;
+    for (const g of sample(sameLesson, Math.min(needed, sameLesson.length))) {
+      picked.push(g);
+      pickedIds.add(g.id);
+    }
+  }
+
+  if (picked.length < GRAMMAR_DISTRACTOR_TARGET) {
+    const fallbackPool = allGrammar.filter((g) => !pickedIds.has(g.id) && g.meaning !== entry.meaning);
+    const needed = GRAMMAR_DISTRACTOR_TARGET - picked.length;
+    picked.push(...sample(fallbackPool, Math.min(needed, fallbackPool.length)));
+  }
+
+  return picked;
+}
+
 /**
  * Degrades straight to "grammar explanation -> pick the meaning" (per spec
  * 3.2's explicit fallback) rather than attempting to blank out the pattern
@@ -179,8 +253,7 @@ function buildVocabQuestion(entry: VocabEntry, allVocab: VocabEntry[]): TodayQue
  * substring match to replace with "___" without sentence-level NLP.
  */
 function buildGrammarQuestion(entry: GrammarEntry, allGrammar: GrammarEntry[]): TodayQuestion {
-  const fallbackPool = allGrammar.filter((g) => g.id !== entry.id && g.meaning !== entry.meaning);
-  const distractorEntries = sample(fallbackPool, Math.min(3, fallbackPool.length));
+  const distractorEntries = pickGrammarDistractors(entry, allGrammar);
   const options = shuffle([
     { text: entry.meaning, sourceLabel: entry.pattern },
     ...distractorEntries.map((d) => ({ text: d.meaning, sourceLabel: d.pattern })),
