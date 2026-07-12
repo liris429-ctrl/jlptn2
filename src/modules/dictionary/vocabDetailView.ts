@@ -3,8 +3,7 @@ import { getStoreSync } from "../../data/store.ts";
 import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
 import { toRubyHtml } from "../../utils/furigana.ts";
-import { touchWord } from "../today/srsStore.ts";
-import { renderFavoriteToggle } from "./entryCard.ts";
+import { renderFavoriteToggle, renderMarkLearnedButton } from "./entryCard.ts";
 import { POS_LABEL } from "./posLabels.ts";
 
 const VERB_FORM_LABELS: [keyof ConjugatedForms, string][] = [
@@ -40,10 +39,6 @@ export function renderVocabDetailView(container: HTMLElement, params: Record<str
     return;
   }
 
-  // A detail-page visit is a weak "seen this" signal for the SRS system - only
-  // seeds a schedule if this word has never been touched before.
-  void touchWord("vocab", entry.id);
-
   const backBtn = el("button", { className: "back-button", type: "button" }, ["← 返回單字"]);
   backBtn.addEventListener("click", () => navigate("/vocab"));
 
@@ -62,7 +57,7 @@ export function renderVocabDetailView(container: HTMLElement, params: Record<str
 
   const meaning = el("p", { className: "vocab-meaning" }, [entry.meaning]);
 
-  const sections: HTMLElement[] = [backBtn, headingRow, meta, meaning];
+  const sections: HTMLElement[] = [backBtn, headingRow, meta, meaning, renderMarkLearnedButton("vocab", entry.id)];
 
   if (entry.partOfSpeech === "verb" && entry.verb?.conjugatedForms) {
     sections.push(renderFormsTable("動詞変化", VERB_FORM_LABELS, entry.verb.conjugatedForms));

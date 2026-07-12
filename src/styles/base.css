@@ -155,3 +155,42 @@ rt {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Shared confirmation toast (utils/toast.ts) - fixed above everything else
+   on the page (60, above today.css's confetti layer at 50), ignores pointer
+   events so it never blocks the content underneath. Reduced-motion gets a
+   near-instant fade for free via the global animation-duration override
+   above, no separate handling needed here. */
+@keyframes app-toast-fade {
+  0%,
+  8% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  15%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+.app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(var(--space-8), calc(var(--space-6) + env(safe-area-inset-bottom)));
+  z-index: 60;
+  max-width: calc(100% - var(--space-8));
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--text-caption);
+  text-align: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-2);
+  pointer-events: none;
+  animation: app-toast-fade 1.8s ease forwards;
+}

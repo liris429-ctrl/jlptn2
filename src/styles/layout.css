@@ -282,3 +282,41 @@
 .favorite-toggle--lg:not(.favorite-toggle--active) {
   color: var(--ink-faint);
 }
+
+/* Explicit "已學習" commitment (entryCard.ts's renderMarkLearnedButton) -
+   Tier 1 (the one deliberate action on this page besides favoriting): full
+   hover+active feedback, position:relative + ::after widens the tap target
+   to 44px without growing the pill (see .chip above for the same pattern). */
+.mark-learned-btn {
+  position: relative;
+  align-self: flex-start;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--accent-ink);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+}
+
+.mark-learned-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 44px;
+  min-width: 44px;
+  transform: translate(-50%, -50%);
+  background: transparent;
+}
+
+.mark-learned-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.mark-learned-btn:active {
+  transform: scale(0.97);
+}

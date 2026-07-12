@@ -211,10 +211,15 @@ export async function recordAnswer(
 }
 
 /**
- * A weak "seen this" signal for browsing into a detail page - only seeds a
- * schedule if the word has never been touched before; does nothing to an
- * existing record (browsing again isn't a re-test). List scrolling/card
- * peeking must never call this - only an actual detail-page visit.
+ * A weak "seen this" signal - only seeds a schedule if the word has never
+ * been touched before; does nothing to an existing record (browsing again
+ * isn't a re-test). No longer wired to a detail-page visit (see
+ * markWordLearned() below, vocabDetailView.ts/grammarDetailView.ts's "已學習"
+ * button) - opening a page to glance at a word used to silently schedule it
+ * 3 days out, which is easy to trigger by accident and doesn't reflect real
+ * study intent. Kept as its own primitive (still exercised directly in
+ * srsStore.test.ts) since "passively seen, no real commitment" remains a
+ * distinct, useful signal from an explicit "已學習" tap.
  */
 export async function touchWord(kind: FavoriteKind, id: string): Promise<void> {
   const key = makeKey(kind, id);
@@ -227,6 +232,31 @@ export async function touchWord(kind: FavoriteKind, id: string): Promise<void> {
   state.srsDue = addDays(today, 3);
   await dbPut(STORE_WORD_STATE, state);
   emit();
+}
+
+/**
+ * Explicit "已學習" commitment from the detail page's own button - the user
+ * consciously decided to start tracking this word, unlike touchWord()'s
+ * passive glance signal. Delegates to recordAnswer() (source "anki", same
+ * self-report path 想起來了 uses) rather than hand-seeding fields directly:
+ * this needs to push a `recent` entry, not just schedule metadata, or
+ * getYesterdayNewWords() can never pick it up the next day (its eligibility
+ * check requires an actual `recent` event dated yesterday, not just
+ * firstSeenAt - see that function's own doc comment). recordAnswer's normal
+ * progression already lands a fresh word on srsInterval=1/srsDue=tomorrow
+ * (nextInterval(0) is the SRS_LADDER's first rung), so no separate interval
+ * logic is needed here. A no-op if a record already exists: this starts
+ * tracking once, it's not a reschedule tool for a word already mid-SRS-cycle
+ * (clobbering an existing srsDue/mastery would be worse than doing
+ * nothing). Returns whether it actually created a new record, so the caller
+ * can show an honest confirmation either way.
+ */
+export async function markWordLearned(kind: FavoriteKind, id: string): Promise<boolean> {
+  const key = makeKey(kind, id);
+  const existing = await dbGet<WordState>(STORE_WORD_STATE, key);
+  if (existing) return false;
+  await recordAnswer(kind, id, true, "anki");
+  return true;
 }
 
 /** srsDue <= today. Words with srsDue = null (never touched) are absent from

@@ -1,10 +1,29 @@
 import type { GrammarEntry, VocabEntry } from "../../data/schema.ts";
 import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
+import { showToast } from "../../utils/toast.ts";
 import type { FavoriteKind } from "../favorites/favoritesStore.ts";
 import { isFavorite, toggleFavorite } from "../favorites/favoritesStore.ts";
 import { clearWeak, markWeak } from "../memorize/weakWordsStore.ts";
+import { markWordLearned } from "../today/srsStore.ts";
 import { POS_LABEL_SHORT } from "./posLabels.ts";
+
+/**
+ * Explicit "已學習" commitment button for a detail page - replaces the old
+ * automatic touchWord()-on-visit trigger (see srsStore.ts's markWordLearned
+ * doc comment for why: a page view alone was too easy to fire by accident).
+ * Shared between vocabDetailView.ts/grammarDetailView.ts so the click
+ * handler and toast copy can't drift between the two.
+ */
+export function renderMarkLearnedButton(kind: FavoriteKind, id: string): HTMLElement {
+  const btn = el("button", { className: "mark-learned-btn", type: "button" }, ["已學習"]);
+  btn.addEventListener("click", () => {
+    void markWordLearned(kind, id).then((created) => {
+      showToast(created ? "已加入明天的學習清單" : "已經在複習清單裡了");
+    });
+  });
+  return btn;
+}
 
 export function renderFavoriteToggle(
   kind: FavoriteKind,

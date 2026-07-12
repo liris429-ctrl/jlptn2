@@ -30,6 +30,7 @@ const {
   daysUntil,
   recordAnswer,
   touchWord,
+  markWordLearned,
   getDueCount,
   getWeakCount,
   getNewCount,
@@ -145,6 +146,47 @@ describe("touchWord", () => {
     const before = await dbGet<{ seen: number }>(STORE_WORD_STATE, "grammar:g-0");
     await touchWord("grammar", "g-0");
     const after = await dbGet<{ seen: number }>(STORE_WORD_STATE, "grammar:g-0");
+    expect(after).toEqual(before);
+  });
+});
+
+describe("markWordLearned", () => {
+  it("creates a record with srsInterval 1 / srsDue tomorrow when absent, and returns true", async () => {
+    const now = localTs(2026, 7, 10, 12, 0);
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const created = await markWordLearned("grammar", "g-0");
+    const state = await dbGet<{ srsInterval: number; srsDue: string; seen: number; recent: { r: number; t: string }[] }>(
+      STORE_WORD_STATE,
+      "grammar:g-0",
+    );
+    expect(created).toBe(true);
+    expect(state?.srsInterval).toBe(1);
+    expect(state?.srsDue).toBe("2026-07-11");
+    expect(state?.seen).toBe(1);
+    vi.restoreAllMocks();
+  });
+
+  // Regression: markWordLearned used to only seed schedule metadata
+  // (srsInterval/srsDue) without pushing a `recent` entry, so
+  // getYesterdayNewWords() - which requires an actual `recent` event dated
+  // yesterday, not just firstSeenAt - could never pick the word up the next
+  // day. The "已學習" button's own toast promises "already added to
+  // tomorrow's study list", so this must hold.
+  it("pushes a recent event so the word qualifies for getYesterdayNewWords() the next day", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 10, 12, 0));
+    await markWordLearned("grammar", "g-0");
+    vi.spyOn(Date, "now").mockReturnValue(localTs(2026, 7, 11, 12, 0));
+    const words = await getYesterdayNewWords();
+    expect(words.map((w) => w.id)).toContain("g-0");
+    vi.restoreAllMocks();
+  });
+
+  it("does nothing and returns false if the word already has a record", async () => {
+    await recordAnswer("grammar", "g-0", true, "quiz");
+    const before = await dbGet<{ seen: number; srsDue: string }>(STORE_WORD_STATE, "grammar:g-0");
+    const created = await markWordLearned("grammar", "g-0");
+    const after = await dbGet<{ seen: number; srsDue: string }>(STORE_WORD_STATE, "grammar:g-0");
+    expect(created).toBe(false);
     expect(after).toEqual(before);
   });
 });

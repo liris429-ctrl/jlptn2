@@ -2,8 +2,7 @@ import type { GrammarExample } from "../../data/schema.ts";
 import { getStoreSync } from "../../data/store.ts";
 import { navigate } from "../../router.ts";
 import { el } from "../../utils/dom.ts";
-import { touchWord } from "../today/srsStore.ts";
-import { renderFavoriteToggle } from "./entryCard.ts";
+import { renderFavoriteToggle, renderMarkLearnedButton } from "./entryCard.ts";
 import { linkedVocabChips } from "./renderLinkedSentence.ts";
 
 export function renderGrammarDetailView(
@@ -21,10 +20,6 @@ export function renderGrammarDetailView(
     return;
   }
 
-  // A detail-page visit is a weak "seen this" signal for the SRS system - only
-  // seeds a schedule if this grammar point has never been touched before.
-  void touchWord("grammar", entry.id);
-
   const backBtn = el("button", { className: "back-button", type: "button" }, ["← 返回文法"]);
   backBtn.addEventListener("click", () => navigate("/grammar"));
 
@@ -34,7 +29,7 @@ export function renderGrammarDetailView(
   ]);
   const meaning = el("p", { className: "grammar-meaning" }, [entry.meaning]);
 
-  const sections: HTMLElement[] = [backBtn, headingRow, meaning];
+  const sections: HTMLElement[] = [backBtn, headingRow, meaning, renderMarkLearnedButton("grammar", entry.id)];
 
   if (entry.conjunctionRulesHtml || entry.conjunctionRules) {
     const box = el("div", { className: "conjunction-box" });
