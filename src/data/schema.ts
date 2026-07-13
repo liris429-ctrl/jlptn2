@@ -183,7 +183,7 @@ export interface GrammarEntry {
   tags?: string[];
 }
 
-export type QuizCategory = "grammar" | "vocab";
+export type QuizCategory = "grammar" | "vocab" | "reading";
 
 export interface QuizQuestion {
   id: string;
@@ -197,6 +197,16 @@ export interface QuizQuestion {
   /** 0-based index into `options`. */
   answer: number;
   explanation?: string;
+  /** Set only for category === "reading": id of the QuizPassage this question is asked about. */
+  passageId?: string;
+}
+
+/** A reading-comprehension passage shared by one or more QuizQuestion (via passageId). */
+export interface QuizPassage {
+  id: string;
+  jlptLevel: JlptLevel;
+  source: string;
+  passageJa: string;
 }
 
 export interface DataStore {

@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { GrammarEntry, QuizQuestion, VocabEntry } from "../src/data/schema.ts";
+import type { GrammarEntry, QuizPassage, QuizQuestion, VocabEntry } from "../src/data/schema.ts";
 
 const VOCAB_PATH = path.resolve(import.meta.dirname, "../public/data/vocab.json");
 const GRAMMAR_PATH = path.resolve(import.meta.dirname, "../public/data/grammar.json");
 const QUIZ_PATH = path.resolve(import.meta.dirname, "../public/data/quiz.json");
+const QUIZ_PASSAGES_PATH = path.resolve(import.meta.dirname, "../public/data/quiz-passages.json");
 
 const VALID_POS = new Set([
   "noun",
@@ -104,11 +105,16 @@ function validateGrammar(grammar: GrammarEntry[], vocabIds: Set<string>, report:
   }
 }
 
-function validateQuiz(quiz: QuizQuestion[], report: Report): void {
+const VALID_QUIZ_CATEGORY = new Set(["grammar", "vocab", "reading"]);
+
+function validateQuiz(quiz: QuizQuestion[], passageIds: Set<string>, report: Report): void {
   const idCounts = new Map<string, number>();
   for (const q of quiz) {
     idCounts.set(q.id, (idCounts.get(q.id) ?? 0) + 1);
     if (!q.question) report.errors.push(`quiz ${q.id}: missing question`);
+    if (!VALID_QUIZ_CATEGORY.has(q.category)) {
+      report.errors.push(`quiz ${q.id}: invalid category "${q.category}"`);
+    }
     if (!VALID_JLPT_LEVEL.has(q.jlptLevel)) {
       report.errors.push(`quiz ${q.id}: invalid jlptLevel "${q.jlptLevel}"`);
     }
@@ -119,9 +125,31 @@ function validateQuiz(quiz: QuizQuestion[], report: Report): void {
       report.errors.push(`quiz ${q.id}: answer index ${q.answer} out of range for ${q.options.length} options`);
     }
     if (!q.explanation) report.warnings.push(`quiz ${q.id}: missing explanation`);
+    if (q.category === "reading") {
+      if (!q.passageId) report.errors.push(`quiz ${q.id}: reading question missing passageId`);
+      else if (!passageIds.has(q.passageId)) {
+        report.errors.push(`quiz ${q.id}: passageId references unknown passage "${q.passageId}"`);
+      }
+    } else if (q.passageId) {
+      report.warnings.push(`quiz ${q.id}: has passageId but category is "${q.category}", not "reading"`);
+    }
   }
   for (const [id, count] of idCounts) {
     if (count > 1) report.errors.push(`quiz: duplicate id "${id}" (${count} occurrences)`);
+  }
+}
+
+function validateQuizPassages(passages: QuizPassage[], report: Report): void {
+  const idCounts = new Map<string, number>();
+  for (const p of passages) {
+    idCounts.set(p.id, (idCounts.get(p.id) ?? 0) + 1);
+    if (!p.passageJa) report.errors.push(`quiz-passage ${p.id}: missing passageJa`);
+    if (!VALID_JLPT_LEVEL.has(p.jlptLevel)) {
+      report.errors.push(`quiz-passage ${p.id}: invalid jlptLevel "${p.jlptLevel}"`);
+    }
+  }
+  for (const [id, count] of idCounts) {
+    if (count > 1) report.errors.push(`quiz-passage: duplicate id "${id}" (${count} occurrences)`);
   }
 }
 
@@ -129,11 +157,13 @@ async function main(): Promise<void> {
   const vocab: VocabEntry[] = JSON.parse(await readFile(VOCAB_PATH, "utf-8"));
   const grammar: GrammarEntry[] = JSON.parse(await readFile(GRAMMAR_PATH, "utf-8"));
   const quiz: QuizQuestion[] = JSON.parse(await readFile(QUIZ_PATH, "utf-8"));
+  const quizPassages: QuizPassage[] = JSON.parse(await readFile(QUIZ_PASSAGES_PATH, "utf-8"));
 
   const report: Report = { errors: [], warnings: [] };
   validateVocab(vocab, report);
   validateGrammar(grammar, new Set(vocab.map((v) => v.id)), report);
-  validateQuiz(quiz, report);
+  validateQuizPassages(quizPassages, report);
+  validateQuiz(quiz, new Set(quizPassages.map((p) => p.id)), report);
 
   if (report.warnings.length > 0) {
     console.warn(`${report.warnings.length} warning(s):`);
