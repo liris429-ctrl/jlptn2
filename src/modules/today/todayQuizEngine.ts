@@ -20,6 +20,7 @@ import {
   markWordsServedToday,
   recordAnswer,
   recordFirstRoundResult,
+  seededRandom,
   setMeta,
   type DrawnWord,
 } from "./srsStore.ts";
@@ -46,13 +47,14 @@ const AUTO_ADVANCE_MS = 600;
 type PhaseKey = "explore" | "review" | "sprint";
 
 interface PhaseInfo {
+  key: PhaseKey;
   poolCounts: { review: number; weak: number; new: number };
 }
 
 const PHASES: Record<PhaseKey, PhaseInfo> = {
-  explore: { poolCounts: { review: 5, weak: 2, new: 3 } },
-  review: { poolCounts: { review: 5, weak: 4, new: 1 } },
-  sprint: { poolCounts: { review: 4, weak: 6, new: 0 } },
+  explore: { key: "explore", poolCounts: { review: 5, weak: 2, new: 3 } },
+  review: { key: "review", poolCounts: { review: 5, weak: 4, new: 1 } },
+  sprint: { key: "sprint", poolCounts: { review: 4, weak: 6, new: 0 } },
 };
 
 /** Mirrors todayView.ts's phaseForDays - kept independent (not imported from
@@ -63,6 +65,16 @@ function phaseForDays(days: number | null): PhaseInfo {
   if (days > 30) return PHASES.review;
   return PHASES.sprint;
 }
+
+/** What fraction of this phase's grammar picks should try the cloze
+ * ("填空") format instead of the "explanation -> pick the meaning" format -
+ * ramps up as the exam gets closer, on the idea that recognizing the
+ * pattern in context is a harder, more exam-realistic test than picking its
+ * definition. Only startMainRound() (今日十問, the one phase-gated round)
+ * looks this up; 續攤 and 昨夜複習 aren't phase-aware and don't pass a ratio
+ * at all, which defaults buildQuestion to 0 (unchanged 100%-type-question
+ * behavior for those two). */
+const CLOZE_RATIO: Record<PhaseKey, number> = { explore: 0, review: 0.5, sprint: 0.8 };
 
 export interface QuestionOption {
   text: string;
@@ -80,6 +92,13 @@ export interface TodayQuestion {
   correctLabel: string;
   options: QuestionOption[];
   answerIndex: number;
+  /** Set only for a cloze-format grammar question - the sense the stem's
+   * example actually demonstrates (e.g. さえ's stem drawn from a 5B example
+   * carries 5B's "as long as X" text, not 5A's; single-sense entries just
+   * get their one sense's text, identical to correctLabel's meaning).
+   * Undefined for every type-format/vocab question, which has no separate
+   * "which sense did the stem show" question to answer. */
+  senseText?: string;
 }
 
 export type TodayQuizPhase = "playing" | "finished";
@@ -191,6 +210,8 @@ const confusableData = confusableDataRaw as unknown as Record<string, Confusable
 
 const GRAMMAR_DISTRACTOR_TARGET = 3;
 
+type GrammarDistractorField = "meaning" | "pattern";
+
 /**
  * Three-layer distractor selection, most-targeted first:
  *   1. confusable.json's curated near-miss pairs for this exact id - skips
@@ -206,10 +227,18 @@ const GRAMMAR_DISTRACTOR_TARGET = 3;
  *      curated distractor - README calls this out as needing a fallback).
  *   3. The prior fully-random pool, only for whatever's still missing.
  * Each layer excludes the entry itself, anything already picked by an
- * earlier layer, and any candidate whose meaning happens to coincide with
- * the correct answer's.
+ * earlier layer, and any candidate whose `field` value happens to coincide
+ * with the correct answer's - `field` is whichever property the caller is
+ * about to display as option text ("meaning" for buildGrammarQuestion's
+ * definition options, "pattern" for buildGrammarClozeQuestion's pattern
+ * options), so two options never show the same text regardless of which
+ * question type is asking.
  */
-function pickGrammarDistractors(entry: GrammarEntry, allGrammar: GrammarEntry[]): GrammarEntry[] {
+function pickGrammarDistractors(
+  entry: GrammarEntry,
+  allGrammar: GrammarEntry[],
+  field: GrammarDistractorField = "meaning",
+): GrammarEntry[] {
   const byId = new Map(allGrammar.map((g) => [g.id, g]));
   const picked: GrammarEntry[] = [];
   const pickedIds = new Set<string>([entry.id]);
@@ -220,14 +249,14 @@ function pickGrammarDistractors(entry: GrammarEntry, allGrammar: GrammarEntry[])
     if (item._filtered) continue;
     if (pickedIds.has(item.id)) continue;
     const candidate = byId.get(item.id);
-    if (!candidate || candidate.meaning === entry.meaning) continue;
+    if (!candidate || candidate[field] === entry[field]) continue;
     picked.push(candidate);
     pickedIds.add(candidate.id);
   }
 
   if (picked.length < GRAMMAR_DISTRACTOR_TARGET && entry.lesson) {
     const sameLesson = allGrammar.filter(
-      (g) => g.lesson === entry.lesson && !pickedIds.has(g.id) && g.meaning !== entry.meaning,
+      (g) => g.lesson === entry.lesson && !pickedIds.has(g.id) && g[field] !== entry[field],
     );
     const needed = GRAMMAR_DISTRACTOR_TARGET - picked.length;
     for (const g of sample(sameLesson, Math.min(needed, sameLesson.length))) {
@@ -237,7 +266,7 @@ function pickGrammarDistractors(entry: GrammarEntry, allGrammar: GrammarEntry[])
   }
 
   if (picked.length < GRAMMAR_DISTRACTOR_TARGET) {
-    const fallbackPool = allGrammar.filter((g) => !pickedIds.has(g.id) && g.meaning !== entry.meaning);
+    const fallbackPool = allGrammar.filter((g) => !pickedIds.has(g.id) && g[field] !== entry[field]);
     const needed = GRAMMAR_DISTRACTOR_TARGET - picked.length;
     picked.push(...sample(fallbackPool, Math.min(needed, fallbackPool.length)));
   }
@@ -262,14 +291,107 @@ function buildGrammarQuestion(entry: GrammarEntry, allGrammar: GrammarEntry[]): 
   return { kind: "grammar", id: entry.id, stem: entry.pattern, correctLabel: entry.pattern, options, answerIndex };
 }
 
-function buildQuestion(word: DrawnWord): TodayQuestion | null {
+/**
+ * Blanks out the `<span class="grammar-highlight">` in an example's
+ * jpHighlightHtml and returns the rest as plain text - DOMParser instead of
+ * a string/regex replace so a highlight span with extra attributes or
+ * nested markup can't produce a mismatched replacement, and so any other
+ * HTML (e.g. furigana ruby, if it's ever mixed in here) collapses to plain
+ * text the same way the highlight span does, via textContent. Returns null
+ * when there's no highlight span to blank (nothing to ask about) or the
+ * span was empty.
+ */
+function extractClozeStem(html: string): string | null {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const span = doc.body.querySelector(".grammar-highlight");
+  if (!span || !span.textContent?.trim()) return null;
+  span.replaceWith(doc.createTextNode("___"));
+  const stem = doc.body.textContent?.trim() ?? "";
+  return stem || null;
+}
+
+/**
+ * First version (see plan): picks the first example with a highlight span,
+ * no ranking by distractorTrap/pairForm/sentence quality yet. Distractors
+ * still come from pickGrammarDistractors' confusable/same-lesson/random
+ * fallback unchanged - confusable.json's curated pairs are per-pattern, not
+ * per-sense, so there's no sense-level distractor data to prefer. Returns
+ * null (letting buildQuestion fall back to buildGrammarQuestion) when the
+ * entry has no example with a highlight to blank out - the type-format
+ * question is always a valid fallback, so a missing cloze source is never
+ * fatal to the round.
+ *
+ * kind stays "grammar" (not a separate "grammar-cloze") - this still writes
+ * to the same grammar:<id> SRS record via recordAnswer/markWordsServedToday
+ * as buildGrammarQuestion, since it's testing the same underlying entry,
+ * just in a different format. senseText is the only new signal, read by
+ * answer feedback to name which usage the stem's example actually showed.
+ *
+ * Multi-sense aware: the stem's example determines which sense is "being
+ * tested" (via that sense's exampleIds - every example belongs to exactly
+ * one sense, verified corpus-wide, so this lookup never falls through to
+ * the entry.senses[0] default in practice). The pattern itself doesn't
+ * split by sense (there's only one form to blank in either case), but
+ * senseText lets answer feedback name the specific usage the example
+ * showed instead of always defaulting to entry.meaning (=senses[0].text).
+ */
+function buildGrammarClozeQuestion(entry: GrammarEntry, allGrammar: GrammarEntry[]): TodayQuestion | null {
+  const example = entry.examples.find((ex) => ex.jpHighlightHtml?.includes("grammar-highlight"));
+  if (!example?.jpHighlightHtml) return null;
+  const stem = extractClozeStem(example.jpHighlightHtml);
+  if (!stem) return null;
+
+  const sense = entry.senses.find((s) => s.exampleIds.includes(example.id)) ?? entry.senses[0]!;
+
+  const distractorEntries = pickGrammarDistractors(entry, allGrammar, "pattern");
+  const options = shuffle([
+    { text: entry.pattern, sourceLabel: entry.pattern },
+    ...distractorEntries.map((d) => ({ text: d.pattern, sourceLabel: d.pattern })),
+  ]);
+  const answerIndex = options.findIndex((o) => o.sourceLabel === entry.pattern);
+  return {
+    kind: "grammar",
+    id: entry.id,
+    stem,
+    correctLabel: entry.pattern,
+    options,
+    answerIndex,
+    senseText: sense.text,
+  };
+}
+
+/** Stable per-entry-per-day roll: same seed formula getDailyGrammarPick uses
+ * (seededRandom keyed by getStudyDate()), but with the entry id folded into
+ * the seed too - otherwise every grammar entry drawn the same day would get
+ * the exact same roll (all-cloze or all-type together) instead of each
+ * entry independently landing on one side of the ratio. Reopening the app
+ * the same day re-derives the same seed, so an in-progress round's
+ * not-yet-answered questions (rebuilt fresh - see buildQuestion callers)
+ * would still land on the same format; in practice this never runs twice
+ * for the same entry same day anyway, since a finished round's questions
+ * come back from the persisted snapshot, not a rebuild. */
+function shouldAskCloze(entryId: string, clozeRatio: number): boolean {
+  if (clozeRatio <= 0) return false;
+  if (clozeRatio >= 1) return true;
+  return seededRandom(`${getStudyDate()}:${entryId}`) < clozeRatio;
+}
+
+/** clozeRatio defaults to 0 (always the type-format question) - only
+ * startMainRound() passes a phase-derived ratio; 續攤 (startExtraRound) and
+ * 昨夜複習 (startWithWords) aren't phase-aware and call this with no second
+ * argument, unchanged from before cloze questions existed. */
+function buildQuestion(word: DrawnWord, clozeRatio = 0): TodayQuestion | null {
   const store = getStoreSync();
   if (word.kind === "vocab") {
     const entry = store.vocabById.get(word.id);
     return entry ? buildVocabQuestion(entry, store.vocab) : null;
   }
   const entry = store.grammarById.get(word.id);
-  return entry ? buildGrammarQuestion(entry, store.grammar) : null;
+  if (!entry) return null;
+  if (shouldAskCloze(entry.id, clozeRatio)) {
+    return buildGrammarClozeQuestion(entry, store.grammar) ?? buildGrammarQuestion(entry, store.grammar);
+  }
+  return buildGrammarQuestion(entry, store.grammar);
 }
 
 function wordKey(w: DrawnWord): string {
@@ -413,6 +535,7 @@ export class TodayQuizEngine {
     ]);
     const days = examDate ? daysUntil(examDate, today) : null;
     const phase = phaseForDays(days);
+    const clozeRatio = CLOZE_RATIO[phase.key];
 
     const pools = await drawTodayPool(phase.poolCounts, learnedUpTo);
     let drawn = [...pools.review, ...pools.weak, ...pools.new];
@@ -420,7 +543,13 @@ export class TodayQuizEngine {
     drawn = shuffle(drawn).slice(0, QUESTION_COUNT);
     await markWordsServedToday(drawn);
 
-    const questions = drawn.map(buildQuestion).filter((q): q is TodayQuestion => q !== null);
+    // Explicit arrow, not a bare `.map(buildQuestion)` - Array.map passes
+    // (element, index, array), and buildQuestion's 2nd param is clozeRatio,
+    // so a bare reference would silently feed the array index in as the
+    // ratio for every word after the first.
+    const questions = drawn
+      .map((w) => buildQuestion(w, clozeRatio))
+      .filter((q): q is TodayQuestion => q !== null);
     this.loadQuestions(questions, "main");
   }
 
@@ -431,7 +560,9 @@ export class TodayQuizEngine {
   private async startExtraRound(priorWrong: DrawnWord[]): Promise<void> {
     const composed = await drawExtraRoundPool(priorWrong, QUESTION_COUNT);
     await markWordsServedToday(composed);
-    const questions = composed.map(buildQuestion).filter((q): q is TodayQuestion => q !== null);
+    // Explicit arrow (see startMainRound's comment) - not phase-aware, so
+    // clozeRatio is deliberately omitted (defaults to 0).
+    const questions = composed.map((w) => buildQuestion(w)).filter((q): q is TodayQuestion => q !== null);
     this.loadQuestions(questions, "extra");
   }
 
@@ -481,7 +612,11 @@ export class TodayQuizEngine {
    * the round-1-only celebratory finished screen.
    */
   startWithWords(words: DrawnWord[]): void {
-    const questions = shuffle(words).map(buildQuestion).filter((q): q is TodayQuestion => q !== null);
+    // Explicit arrow (see startMainRound's comment) - not phase-aware, so
+    // clozeRatio is deliberately omitted (defaults to 0).
+    const questions = shuffle(words)
+      .map((w) => buildQuestion(w))
+      .filter((q): q is TodayQuestion => q !== null);
     this.loadQuestions(questions, "extra");
   }
 

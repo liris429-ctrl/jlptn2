@@ -650,7 +650,7 @@ export async function getYesterdayNewWords(): Promise<WordState[]> {
   );
 }
 
-function seededRandom(seed: string): number {
+export function seededRandom(seed: string): number {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
   let t = (h ^ 0x9e3779b9) >>> 0;
