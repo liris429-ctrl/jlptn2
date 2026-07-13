@@ -1,39 +1,45 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { AdditionalNote, GrammarEntry, GrammarExample, GrammarSense } from "../src/data/schema.ts";
-import { parseCsvRows, slugify } from "./lib/csv-utils.ts";
-import {
-  furiganaBracketToRuby,
-  htmlToPlainText,
-  sanitizeHtml,
-  stripAnkiHeaderComments,
-} from "./lib/anki-utils.ts";
+import { slugify } from "./lib/csv-utils.ts";
+import { furiganaBracketToRuby, htmlToPlainText, sanitizeHtml } from "./lib/anki-utils.ts";
 import { applyOverrides } from "./lib/overrides.ts";
 
-const RAW_PATH = path.resolve(import.meta.dirname, "../data-source/raw/grammar-notes.csv");
+const RAW_PATH = path.resolve(import.meta.dirname, "../data-source/raw/grammar-notes.json");
 const OVERRIDES_PATH = path.resolve(
   import.meta.dirname,
   "../data-source/overrides/grammar-overrides.csv",
 );
 const OUT_PATH = path.resolve(import.meta.dirname, "../public/data/grammar.json");
 
-// Anki plain-text export column layout (0-indexed), see shin-kanzen-n2-grammar/notes.csv
-// header comments (`#deck column:1`, `#tags column:22`) and templates/*.html field names.
-const COL = {
-  frontSentence: 1,
-  pattern: 2,
-  lesson: 3,
-  backSentenceHtml: 4,
-  reading: 5,
-  translation: 6,
-  grammarFormation: 8,
-  richGrammarFormationHtml: 9,
-  additionalNotes: 11,
-  additionalNotesZh: 12,
-  explanationJapanese: 15,
-  explanationChinese: 16,
-  detailedExplanationHtml: 18,
-} as const;
+/**
+ * shin-kanzen-n2-grammar/notes.json's own field names (confirmed against the
+ * repo's Anki card template and by direct comparison against notes.csv -
+ * that CSV is a *generated* export, and its own generation step swaps the
+ * explanationJapanese/explanationChinese and additionalNotes/additionalNotesZh
+ * field pairs. notes.json has no such issue; reading it directly by field
+ * name needs no swap-compensation at all.
+ */
+interface RawNote {
+  deck: string;
+  frontSentence: string;
+  grammarPattern: string;
+  lessonInfo: string;
+  backSentence: string;
+  readingFurigana: string;
+  translation: string;
+  audioFile: string;
+  grammarFormation: string;
+  richGrammarFormation: string;
+  styleNotes: string;
+  explanationJapanese: string;
+  explanationChinese: string;
+  additionalNotes: string;
+  additionalNotesZh: string;
+  detailedExplanation: string;
+  level: string;
+  lineNumber: string;
+}
 
 function normalizePatternText(text: string): string {
   return text
@@ -42,86 +48,82 @@ function normalizePatternText(text: string): string {
     .trim();
 }
 
-function cell(row: string[], index: number): string {
-  return (row[index] ?? "").trim();
+function val(note: RawNote, key: keyof RawNote): string {
+  return (note[key] ?? "").trim();
 }
 
 interface RawGroup {
   pattern: string;
-  rows: string[][];
+  notes: RawNote[];
 }
 
-function groupByPattern(rows: string[][]): RawGroup[] {
+function groupByPattern(notes: RawNote[]): RawGroup[] {
   const order: string[] = [];
-  const groups = new Map<string, string[][]>();
-  for (const row of rows) {
-    const pattern = cell(row, COL.pattern);
+  const groups = new Map<string, RawNote[]>();
+  for (const note of notes) {
+    const pattern = val(note, "grammarPattern");
     if (!pattern) continue;
     if (!groups.has(pattern)) {
       groups.set(pattern, []);
       order.push(pattern);
     }
-    groups.get(pattern)!.push(row);
+    groups.get(pattern)!.push(note);
   }
-  return order.map((pattern) => ({ pattern, rows: groups.get(pattern)! }));
+  return order.map((pattern) => ({ pattern, notes: groups.get(pattern)! }));
 }
 
-function buildExample(row: string[], entryId: string, index: number): GrammarExample {
-  const backHtml = cell(row, COL.backSentenceHtml);
-  const detailedHtml = cell(row, COL.detailedExplanationHtml);
+function buildExample(note: RawNote, entryId: string, index: number): GrammarExample {
+  const backHtml = val(note, "backSentence");
+  const detailedHtml = val(note, "detailedExplanation");
   return {
     id: `${entryId}-ex${index + 1}`,
     jp: htmlToPlainText(backHtml),
     jpHighlightHtml: backHtml ? sanitizeHtml(backHtml) : undefined,
-    furiganaRuby: furiganaBracketToRuby(cell(row, COL.reading)),
-    cn: cell(row, COL.translation),
+    furiganaRuby: furiganaBracketToRuby(val(note, "readingFurigana")),
+    cn: val(note, "translation"),
     detailedExplanationHtml: detailedHtml ? sanitizeHtml(detailedHtml) : undefined,
-    lessonSubgroup: cell(row, COL.lesson),
+    lessonSubgroup: val(note, "lessonInfo"),
   };
 }
 
 interface LessonSubgroup {
   lessonSubgroup: string;
-  rows: string[][];
+  notes: RawNote[];
 }
 
 /**
- * Splits a pattern group's rows by their raw lesson label (e.g. さえ's 6 rows
- * split into a 5A trio and a 5B trio - two distinct senses taught under
- * separate sub-lessons upstream). Sorted by the label string itself (not
- * left in CSV row order) so senses[0] is deterministically the
- * alphabetically-first sub-group regardless of how the upstream rows happen
- * to interleave.
+ * Splits a pattern group's notes by their raw lesson label (e.g. さえ's 6
+ * notes split into a 5A trio and a 5B trio - two distinct senses taught
+ * under separate sub-lessons upstream). Sorted by the label string itself
+ * (not left in source order) so senses[0] is deterministically the
+ * alphabetically-first sub-group regardless of how the upstream notes
+ * happen to interleave.
  */
-function groupRowsByLessonSubgroup(rows: string[][]): LessonSubgroup[] {
+function groupNotesByLessonSubgroup(notes: RawNote[]): LessonSubgroup[] {
   const order: string[] = [];
-  const groups = new Map<string, string[][]>();
-  for (const row of rows) {
-    const lessonSubgroup = cell(row, COL.lesson);
+  const groups = new Map<string, RawNote[]>();
+  for (const note of notes) {
+    const lessonSubgroup = val(note, "lessonInfo");
     if (!groups.has(lessonSubgroup)) {
       groups.set(lessonSubgroup, []);
       order.push(lessonSubgroup);
     }
-    groups.get(lessonSubgroup)!.push(row);
+    groups.get(lessonSubgroup)!.push(note);
   }
   return [...order]
     .sort((a, b) => a.localeCompare(b))
-    .map((lessonSubgroup) => ({ lessonSubgroup, rows: groups.get(lessonSubgroup)! }));
+    .map((lessonSubgroup) => ({ lessonSubgroup, notes: groups.get(lessonSubgroup)! }));
 }
 
 /**
- * One sense per distinct lesson sub-group (see groupRowsByLessonSubgroup) -
+ * One sense per distinct lesson sub-group (see groupNotesByLessonSubgroup) -
  * this is what makes multi-sense grammar points (さえ, に対して, に限って, ...)
  * keep every sense instead of buildEntry's old firstNonEmpty(explanationChinese)
- * silently discarding every sub-group after the first. Does NOT fix the
- * separate "meaning/additionalNotes swapped at the source" defect some
- * single-sub-group entries have - a sense built from a single sub-group's
- * explanationChinese still faithfully carries over whatever that column
- * says, wrong or not. That's handled separately (see overrides).
+ * silently discarding every sub-group after the first.
  */
 function buildSenses(examples: GrammarExample[], subgroups: LessonSubgroup[]): GrammarSense[] {
   const rawSenses = subgroups.map((sg) => ({
-    text: firstNonEmpty(sg.rows, COL.explanationChinese),
+    text: firstNonEmpty(sg.notes, "explanationChinese"),
     lessonSubgroup: sg.lessonSubgroup,
     exampleIds: examples.filter((ex) => ex.lessonSubgroup === sg.lessonSubgroup).map((ex) => ex.id),
   }));
@@ -150,24 +152,24 @@ function dedupeSensesByText(senses: GrammarSense[]): GrammarSense[] {
   return order.map((text) => byText.get(text)!);
 }
 
-function collectAdditionalNotes(rows: string[][]): AdditionalNote[] {
+function collectAdditionalNotes(notes: RawNote[]): AdditionalNote[] {
   const seen = new Set<string>();
-  const notes: AdditionalNote[] = [];
-  for (const row of rows) {
-    const textJa = cell(row, COL.additionalNotes);
-    const textZh = cell(row, COL.additionalNotesZh);
+  const result: AdditionalNote[] = [];
+  for (const note of notes) {
+    const textJa = val(note, "additionalNotes");
+    const textZh = val(note, "additionalNotesZh");
     if (!textJa && !textZh) continue;
     const key = `${textJa}::${textZh}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    notes.push({ textJa, textZh });
+    result.push({ textJa, textZh });
   }
-  return notes;
+  return result;
 }
 
-function firstNonEmpty(rows: string[][], index: number): string {
-  for (const row of rows) {
-    const v = cell(row, index);
+function firstNonEmpty(notes: RawNote[], key: keyof RawNote): string {
+  for (const note of notes) {
+    const v = val(note, key);
     if (v) return v;
   }
   return "";
@@ -179,23 +181,22 @@ function buildEntry(group: RawGroup, idCounts: Map<string, number>): GrammarEntr
   idCounts.set(baseId, count + 1);
   const id = count === 0 ? baseId : `${baseId}-${count + 1}`;
 
-  const richFormationHtml = firstNonEmpty(group.rows, COL.richGrammarFormationHtml);
-  const detailedFirstRow = firstNonEmpty(group.rows, COL.detailedExplanationHtml);
+  const richFormationHtml = firstNonEmpty(group.notes, "richGrammarFormation");
 
-  const examples = group.rows.map((row, i) => buildExample(row, id, i));
-  const senses = buildSenses(examples, groupRowsByLessonSubgroup(group.rows));
+  const examples = group.notes.map((note, i) => buildExample(note, id, i));
+  const senses = buildSenses(examples, groupNotesByLessonSubgroup(group.notes));
 
   return {
     id,
     pattern: group.pattern,
-    conjunctionRules: firstNonEmpty(group.rows, COL.grammarFormation),
+    conjunctionRules: firstNonEmpty(group.notes, "grammarFormation"),
     conjunctionRulesHtml: richFormationHtml ? sanitizeHtml(richFormationHtml) : undefined,
     meaning: senses[0]!.text,
-    explanationJa: firstNonEmpty(group.rows, COL.explanationJapanese) || undefined,
-    lesson: firstNonEmpty(group.rows, COL.lesson) || undefined,
+    explanationJa: firstNonEmpty(group.notes, "explanationJapanese") || undefined,
+    lesson: firstNonEmpty(group.notes, "lessonInfo") || undefined,
     examples,
     senses,
-    additionalNotes: collectAdditionalNotes(group.rows),
+    additionalNotes: collectAdditionalNotes(group.notes),
   };
 }
 
@@ -217,8 +218,8 @@ function resolveRelatedGrammarIds(entries: GrammarEntry[]): void {
 
 async function main(): Promise<void> {
   const raw = await readFile(RAW_PATH, "utf-8");
-  const rows = parseCsvRows(stripAnkiHeaderComments(raw));
-  const groups = groupByPattern(rows);
+  const notes = JSON.parse(raw) as RawNote[];
+  const groups = groupByPattern(notes);
 
   const idCounts = new Map<string, number>();
   let entries = groups.map((g) => buildEntry(g, idCounts));

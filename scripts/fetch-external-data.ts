@@ -4,9 +4,16 @@ import path from "node:path";
 const RAW_DIR = path.resolve(import.meta.dirname, "../data-source/raw");
 
 const SOURCES = [
+  // notes.json (not notes.csv) - the repo's own README names notes.json "the
+  // sole editable source" and notes.csv "a generated product, do not edit
+  // directly". Confirmed the hard way: the notes.csv -> generation step
+  // swaps the explanationJapanese/explanationChinese and
+  // additionalNotes/additionalNotesZh field pairs, so every grammar meaning
+  // parsed from the CSV was actually usage/attachment notes, not the
+  // definition. The JSON has no such issue - same content, correct fields.
   {
-    url: "https://raw.githubusercontent.com/mxggle/anki-jlpt-n2-grammar-example-sentences/main/shin-kanzen-n2-grammar/notes.csv",
-    out: "grammar-notes.csv",
+    url: "https://raw.githubusercontent.com/mxggle/anki-jlpt-n2-grammar-example-sentences/main/shin-kanzen-n2-grammar/notes.json",
+    out: "grammar-notes.json",
   },
   {
     url: "https://raw.githubusercontent.com/5mdld/anki-jlpt-decks/main/deck-source/notes.csv",
