@@ -4,13 +4,11 @@ import path from "node:path";
 const RAW_DIR = path.resolve(import.meta.dirname, "../data-source/raw");
 
 const SOURCES = [
-  // notes.json (not notes.csv) - the repo's own README names notes.json "the
-  // sole editable source" and notes.csv "a generated product, do not edit
-  // directly". Confirmed the hard way: the notes.csv -> generation step
-  // swaps the explanationJapanese/explanationChinese and
-  // additionalNotes/additionalNotesZh field pairs, so every grammar meaning
-  // parsed from the CSV was actually usage/attachment notes, not the
-  // definition. The JSON has no such issue - same content, correct fields.
+  // 請勿改抓 notes.csv！該檔案為 to-csv 匯出產物，存在全體欄位對調之系統性
+  // Bug（explanationJapanese/explanationChinese 與
+  // additionalNotes/additionalNotesZh 兩組欄位互換，導致文法 meaning 全數變成
+  // 接續限制説明、真正定義被錯放進 additionalNotes），故在此改抓官方唯一正確
+  // 的源頭 notes.json（repo README 明載其為 "the sole editable source"）。
   {
     url: "https://raw.githubusercontent.com/mxggle/anki-jlpt-n2-grammar-example-sentences/main/shin-kanzen-n2-grammar/notes.json",
     out: "grammar-notes.json",
